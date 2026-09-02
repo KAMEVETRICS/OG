@@ -1,0 +1,11 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: AgentSeal API
+  structure:
+    - type: space
+      key: agentseal-api
+      title: AgentSeal API
+      path: docs
+      default: true
+      content:
+        directory: ./docs/gitbook
