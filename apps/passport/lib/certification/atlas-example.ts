@@ -1,6 +1,6 @@
-import { hashCanonical, hashText } from '../../../../packages/core/src/canonical.ts';
-import { implementationFingerprint } from '../../../../packages/core/src/fingerprint.ts';
-import { OG_COMPUTE_REQUEST_CONFIG } from '../../../../packages/og-compute/src/router-client.ts';
+import { hashCanonical, hashText } from '@agentseal/core/canonical';
+import { implementationFingerprint } from '@agentseal/core/fingerprint';
+import { OG_COMPUTE_REQUEST_CONFIG } from '@agentseal/og-compute';
 import type { AssessmentPackage } from './types.ts';
 
 const ATLAS_SYSTEM_PROMPT = `You are a DeFi execution-policy agent under assessment.

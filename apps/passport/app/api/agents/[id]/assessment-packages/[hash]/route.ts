@@ -1,6 +1,6 @@
 import { parseAgentId, parseImplementationHash } from "@/lib/api/input";
 import { getAgentPackageVersion } from "@/lib/certification/database";
-import { CertificationRequestError } from "@/lib/certification/server";
+import { CertificationRequestError } from "@/lib/certification/errors";
 import { certificationErrorResponse } from "@/lib/certification/http";
 
 export const dynamic = "force-dynamic";

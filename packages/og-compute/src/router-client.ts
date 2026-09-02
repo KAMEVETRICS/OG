@@ -1,5 +1,5 @@
-import { hashText } from "../../core/src/canonical.ts";
-import type { ExecutionReceipt } from "../../core/src/types.ts";
+import { hashText } from "@agentseal/core/canonical";
+import type { ExecutionReceipt } from "@agentseal/core/types";
 
 interface RouterTrace {
   request_id?: unknown;

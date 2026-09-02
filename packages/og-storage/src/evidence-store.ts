@@ -1,7 +1,7 @@
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { JsonRpcProvider, Wallet } from "ethers";
-import { canonicalize, hashText } from "../../core/src/canonical.ts";
-import type { AssessmentReport } from "../../core/src/types.ts";
+import { canonicalize, hashText } from "@agentseal/core/canonical";
+import type { AssessmentReport } from "@agentseal/core/types";
 
 export interface EvidenceReceipt {
   network: "0g-mainnet";

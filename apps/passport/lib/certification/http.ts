@@ -1,6 +1,5 @@
 import { InputError, rejectDangerousKeys } from '@/lib/api/input';
-import { CertificationRequestError } from './server';
-import { CertificationStorageError } from './sql';
+import { CertificationRequestError, CertificationStorageError } from './errors';
 
 export async function readJsonObject(request: Request, maximumBytes = 16_384): Promise<Record<string, unknown>> {
   const declaredLength = Number(request.headers.get('content-length') ?? '0');

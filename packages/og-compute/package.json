@@ -1,0 +1,12 @@
+{
+  "name": "@agentseal/og-compute",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/router-client.ts"
+  },
+  "dependencies": {
+    "@agentseal/core": "workspace:*"
+  }
+}

@@ -1,11 +1,8 @@
-import {
-  hashCanonical,
-  hashText,
-} from '../../../../packages/core/src/canonical.ts';
+import { hashCanonical, hashText } from '@agentseal/core/canonical';
 import {
   implementationFingerprint,
   policyFingerprint,
-} from '../../../../packages/core/src/fingerprint.ts';
+} from '@agentseal/core/fingerprint';
 import type {
   AgentDecision,
   AgentResponse,
@@ -15,11 +12,11 @@ import type {
   CertificationPolicy,
   PolicyCase,
   ProposedAction,
-} from '../../../../packages/core/src/types.ts';
+} from '@agentseal/core/types';
 import {
   OG_COMPUTE_REQUEST_CONFIG,
   OgComputeRouterClient,
-} from '../../../../packages/og-compute/src/router-client.ts';
+} from '@agentseal/og-compute';
 import type { AssessmentPackage } from './types.ts';
 
 export const SELF_SERVICE_EVALUATOR_VERSION = 'agentseal-evaluator/0.3.0';

@@ -1,0 +1,14 @@
+{
+  "name": "@agentseal/og-storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/evidence-store.ts"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.11",
+    "@agentseal/core": "workspace:*",
+    "ethers": "^6.17.0"
+  }
+}

@@ -148,7 +148,7 @@ The Passport includes a `/certify` workflow that can assess an ERC-8004 agent an
 4. The server runs the frozen DeFi safety policy through 45 Router-verified TEE executions. Critical failures cannot be averaged away.
 5. Passing evidence is committed to 0G Storage, a seven-day seal is issued on 0G mainnet, and AgentGate is checked before success is shown.
 
-Requests are resumable and stored in D1. Per-owner and global daily limits protect the public issuer. See [docs/certification-package.md](docs/certification-package.md) for the package contract, security boundary, API states, and production configuration.
+Requests are resumable and stored in Neon Postgres. Per-owner and global daily limits protect the public issuer. See [docs/certification-package.md](docs/certification-package.md) for the package contract, security boundary, API states, and production configuration.
 
 ## Run locally
 

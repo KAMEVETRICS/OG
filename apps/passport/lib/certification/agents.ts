@@ -1,9 +1,7 @@
 import {
   AGENT_SEAL_REGISTRY_ABI,
   AgentSealClient,
-  ATLAS_0G,
   OG_MAINNET,
-  ROGUE_DEMO,
   type AgentIdentity,
 } from '@agentseal/sdk';
 import { Contract, getAddress, isAddress } from 'ethers';
@@ -17,11 +15,9 @@ import {
   findRegisteredAssessmentEndpoint,
   parseChainScanAgentIds,
 } from './agent-package-discovery';
-import {
-  CertificationRequestError,
-  certificationModelRevision,
-  certifierProvider,
-} from './server';
+import { fixtureHashesFor } from './demo-fixtures';
+import { certificationModelRevision, certifierProvider } from './env';
+import { CertificationRequestError } from './errors';
 import type { AssessmentPackage, CurrentSeal, OwnedAgent } from './types';
 
 const CHAINSCAN_TOKENS_URL = 'https://chainscan.0g.ai/open/nft/tokens';
@@ -30,14 +26,6 @@ const SEAL_QUERY_ABI = [
   ...AGENT_SEAL_REGISTRY_ABI,
   'event SealIssued(uint256 indexed sealId, uint256 indexed agentId, bytes32 indexed policyHash, bytes32 versionHash, bytes32 evidenceRoot, uint16 safetyScore, uint64 expiresAt, address issuer)',
 ] as const;
-
-function fixtureHashesFor(agentId: string): string[] {
-  const id = BigInt(agentId);
-  const hashes: string[] = [];
-  if (id === ATLAS_0G.agentId) hashes.push(ATLAS_0G.implementationHash);
-  if (id === ROGUE_DEMO.agentId) hashes.push(ROGUE_DEMO.implementationHash);
-  return hashes;
-}
 
 export async function findCurrentSeal(agentId: string): Promise<CurrentSeal | null> {
   const provider = certifierProvider();
@@ -206,20 +194,8 @@ async function toOwnedAgent(
 ): Promise<OwnedAgent> {
   const agentId = identity.agentId.toString();
   const [resolved, currentSeal] = await Promise.all([
-    resolveAgentPackage(identity, origin).catch((error: unknown) => {
-      console.error(
-        `[certification] Package lookup for agent ${agentId} failed:`,
-        error instanceof Error ? error.message : error,
-      );
-      return null;
-    }),
-    findCurrentSeal(agentId).catch((error: unknown) => {
-      console.error(
-        `[certification] Seal lookup for agent ${agentId} failed:`,
-        error instanceof Error ? error.message : error,
-      );
-      return null;
-    }),
+    resolveAgentPackage(identity, origin),
+    findCurrentSeal(agentId),
   ]);
   return {
     agentId,
@@ -276,20 +252,7 @@ export async function listOwnedAgents(
   if (!isAddress(ownerInput))
     throw new CertificationRequestError('Connect a valid EVM owner wallet.');
   const owner = getAddress(ownerInput);
-  let ids: string[] = [];
-  try {
-    ids = await chainscanAgentIds(owner);
-  } catch (error) {
-    console.error(
-      '[certification] ChainScan discovery failed:',
-      error instanceof Error ? error.message : error,
-    );
-  }
-  if (owner.toLowerCase() === OG_MAINNET.trustedIssuer.toLowerCase()) {
-    for (const id of [ATLAS_0G.agentId.toString(), ROGUE_DEMO.agentId.toString()]) {
-      if (!ids.includes(id)) ids.push(id);
-    }
-  }
+  const ids = await chainscanAgentIds(owner);
   const client = identityClient();
   const verified = await Promise.all(
     ids.map(async (agentId) => {

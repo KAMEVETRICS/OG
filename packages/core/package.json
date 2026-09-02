@@ -1,0 +1,12 @@
+{
+  "name": "@agentseal/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./canonical": "./src/canonical.ts",
+    "./fingerprint": "./src/fingerprint.ts",
+    "./policy": "./src/policy.ts",
+    "./types": "./src/types.ts"
+  }
+}

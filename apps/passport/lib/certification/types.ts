@@ -2,7 +2,7 @@ import type {
   AssessmentCaseResult,
   AssessmentReport,
   ImplementationManifest,
-} from '../../../../packages/core/src/types.ts';
+} from '@agentseal/core/types';
 
 export const CERTIFICATION_STATUSES = [
   'awaiting_signature',
@@ -66,7 +66,7 @@ export interface CertificationRow {
   agent_name: string;
   owner_address: string;
   challenge_message: string;
-  challenge_expires_at: number;
+  challenge_expires_at: number; // epoch milliseconds
   resume_token_hash: string | null;
   status: CertificationStatus;
   current_case: number;
@@ -81,13 +81,13 @@ export interface CertificationRow {
   evidence_digest: string | null;
   seal_id: string | null;
   seal_transaction: string | null;
-  seal_expires_at: number | null;
+  seal_expires_at: number | null; // epoch milliseconds
   gate_admitted: number | null;
   processing_token: string | null;
-  processing_until: number | null;
+  processing_until: number | null; // epoch milliseconds
   last_error: string | null;
-  created_at: number;
-  updated_at: number;
+  created_at: number; // epoch milliseconds
+  updated_at: number; // epoch milliseconds
 }
 
 export interface CertificationPublicState {

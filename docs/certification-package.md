@@ -68,7 +68,7 @@ Configure these as server-side Sites runtime values:
 - `SITE_ORIGIN`
 - `CERTIFIER_DAILY_OWNER_LIMIT` and `CERTIFIER_DAILY_GLOBAL_LIMIT` when overriding defaults
 
-`OG_PRIVATE_KEY` is the authorized AgentSeal issuer and pays 0G Storage and chain costs. It must never use a `VITE_` or `NEXT_PUBLIC_` prefix. D1 binding `DB` stores resumable request state, versioned package registrations, and an issuer lease that prevents concurrent finalization from racing the signer nonce.
+`OG_PRIVATE_KEY` is the authorized AgentSeal issuer and pays 0G Storage and chain costs. It must never use a `VITE_` or `NEXT_PUBLIC_` prefix. Neon (`DATABASE_URL`) stores resumable request state, versioned package registrations, and an issuer lease that prevents concurrent finalization from racing the signer nonce.
 
 ## Safety boundaries
 
