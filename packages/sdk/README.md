@@ -22,4 +22,4 @@ HTTP equivalent (no SDK, no API key):
 curl "$BASE/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
-See [docs/gitbook](../../docs/gitbook/README.md).
+See the [AgentSeal API docs](https://agentseal.gitbook.io/agentseal-docs/).

@@ -11,6 +11,7 @@ We built AgentSeal on 0G: version-bound safety passports for autonomous agents.
 Atlas passes. Rogue is blocked.
 
 Demo: https://og-agentseal.vercel.app
+Docs: https://agentseal.gitbook.io/agentseal-docs
 Code: https://github.com/KAMEVETRICS/OG
 
 ## Optional reply

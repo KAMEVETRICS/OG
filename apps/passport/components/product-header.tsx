@@ -30,6 +30,14 @@ export function ProductHeader({
         </span>
         <a
           className="protocol-link"
+          href="https://agentseal.gitbook.io/agentseal-docs/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Docs <ArrowUpRight aria-hidden="true" />
+        </a>
+        <a
+          className="protocol-link"
           href={`${OG_MAINNET.explorerUrl}/address/${OG_MAINNET.agentSealRegistry}`}
           target="_blank"
           rel="noreferrer"

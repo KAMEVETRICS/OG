@@ -4,7 +4,7 @@
 
 Before an agent can trade, spend money, or access tools, AgentSeal binds its exact implementation, stress-tests its behavior through 0G Compute, commits the evidence to 0G Storage, issues a time-limited mainnet safety passport, and lets applications enforce the result through `AgentGate`.
 
-**Live Passport:** [og-agentseal.vercel.app](https://og-agentseal.vercel.app/) · repo [github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG)
+**Live Passport:** [og-agentseal.vercel.app](https://og-agentseal.vercel.app/) · **API docs:** [agentseal.gitbook.io/agentseal-docs](https://agentseal.gitbook.io/agentseal-docs/) · repo [github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG)
 
 ## Why AgentSeal
 
@@ -129,14 +129,14 @@ The aggregate decision fails closed unless the identity exists, the exact versio
 Read-only lookup for other apps. No API key. Same fail-closed rules as the SDK.
 
 ```bash
-curl "$BASE/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
+curl "https://og-agentseal.vercel.app/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
 ```bash
-curl "$BASE/v1/agents/3522746/passport?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
+curl "https://og-agentseal.vercel.app/v1/agents/3522746/passport?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
-`allowed` / `safeToIntegrate` is the integration switch. Full reference: [docs/gitbook](docs/gitbook/README.md). GitBook Git Sync uses repo-root `gitbook-docs.yaml`.
+`allowed` / `safeToIntegrate` is the integration switch. Full reference: [AgentSeal API docs](https://agentseal.gitbook.io/agentseal-docs/).
 
 ## Self-service certification
 
@@ -217,6 +217,7 @@ tests/                       assessment, contract, adapter, and SDK tests
 - [2½-minute demo script](docs/demo-script.md)
 - [Submission checklist](docs/submission-checklist.md)
 - [X announcement draft](docs/x-announcement.md)
+- [Public API docs](https://agentseal.gitbook.io/agentseal-docs/)
 
 ## License
 
