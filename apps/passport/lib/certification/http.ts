@@ -1,5 +1,6 @@
 import { InputError, rejectDangerousKeys } from '@/lib/api/input';
 import { CertificationRequestError } from './server';
+import { CertificationStorageError } from './sql';
 
 export async function readJsonObject(request: Request, maximumBytes = 16_384): Promise<Record<string, unknown>> {
   const declaredLength = Number(request.headers.get('content-length') ?? '0');
@@ -28,6 +29,9 @@ export function certificationErrorResponse(error: unknown): Response {
     return Response.json({ error: error.message, code: error.code }, { status: error.status });
   }
   if (error instanceof CertificationRequestError) {
+    return Response.json({ error: error.message, code: error.code }, { status: error.status });
+  }
+  if (error instanceof CertificationStorageError) {
     return Response.json({ error: error.message, code: error.code }, { status: error.status });
   }
   console.error('[certification] Internal request failure:', error instanceof Error ? error.message : error);

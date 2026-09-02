@@ -1,5 +1,3 @@
-import { env } from 'cloudflare:workers';
-
 import {
   agentPackagesOwnerIndexSchema,
   agentPackagesSchema,
@@ -9,6 +7,7 @@ import {
   ownerCreatedIndexSchema,
   statusUpdatedIndexSchema,
 } from '@/db/schema';
+import { sqlExec, sqlFirst, sqlKind } from './sql';
 import type {
   AgentPackageRow,
   CertificationRow,
@@ -17,26 +16,25 @@ import type {
 
 let schemaReady: Promise<void> | null = null;
 
-export function certificationDatabase(): D1Database {
-  if (!env.DB) throw new Error('Certification database binding is unavailable');
-  return env.DB;
-}
-
 export async function ensureCertificationSchema(): Promise<void> {
   schemaReady ??= (async () => {
-    const database = certificationDatabase();
-    await database.batch([
-      database.prepare(certificationRequestsSchema),
-      database.prepare(ownerCreatedIndexSchema),
-      database.prepare(statusUpdatedIndexSchema),
-      database.prepare(certifierLocksSchema),
-      database.prepare(agentPackagesSchema),
-      database.prepare(agentPackagesUpdatedIndexSchema),
-      database.prepare(agentPackagesOwnerIndexSchema),
-      database.prepare(
-        "INSERT OR IGNORE INTO certifier_locks(name, holder, lease_until) VALUES ('issuer', NULL, 0)",
-      ),
-    ]);
+    const statements = [
+      certificationRequestsSchema,
+      ownerCreatedIndexSchema,
+      statusUpdatedIndexSchema,
+      certifierLocksSchema,
+      agentPackagesSchema,
+      agentPackagesUpdatedIndexSchema,
+      agentPackagesOwnerIndexSchema,
+    ];
+    for (const statement of statements) {
+      await sqlExec(statement);
+    }
+    const seed =
+      (await sqlKind()) === 'postgres'
+        ? "INSERT INTO certifier_locks(name, holder, lease_until) VALUES ('issuer', NULL, 0) ON CONFLICT (name) DO NOTHING"
+        : "INSERT OR IGNORE INTO certifier_locks(name, holder, lease_until) VALUES ('issuer', NULL, 0)";
+    await sqlExec(seed);
   })().catch((error: unknown) => {
     schemaReady = null;
     throw error;
@@ -49,14 +47,14 @@ export async function getLatestAgentPackage(
   owner: string,
 ): Promise<AgentPackageRow | null> {
   await ensureCertificationSchema();
-  return certificationDatabase()
-    .prepare(`
+  return sqlFirst<AgentPackageRow>(
+    `
       SELECT * FROM agent_packages
       WHERE agent_id = ?1 AND owner_address = ?2
       ORDER BY updated_at DESC LIMIT 1
-    `)
-    .bind(agentId, owner.toLowerCase())
-    .first<AgentPackageRow>();
+    `,
+    [agentId, owner.toLowerCase()],
+  );
 }
 
 export async function getAgentPackageVersion(
@@ -64,18 +62,16 @@ export async function getAgentPackageVersion(
   implementationHash: string,
 ): Promise<AgentPackageRow | null> {
   await ensureCertificationSchema();
-  return certificationDatabase()
-    .prepare(
-      'SELECT * FROM agent_packages WHERE agent_id = ?1 AND implementation_hash = ?2',
-    )
-    .bind(agentId, implementationHash.toLowerCase())
-    .first<AgentPackageRow>();
+  return sqlFirst<AgentPackageRow>(
+    'SELECT * FROM agent_packages WHERE agent_id = ?1 AND implementation_hash = ?2',
+    [agentId, implementationHash.toLowerCase()],
+  );
 }
 
 export async function upsertAgentPackage(row: AgentPackageRow): Promise<void> {
   await ensureCertificationSchema();
-  await certificationDatabase()
-    .prepare(`
+  await sqlExec(
+    `
       INSERT INTO agent_packages (
         agent_id, implementation_hash, package_json, agent_name, owner_address,
         storage_root, storage_transaction, storage_digest, created_at, updated_at
@@ -88,8 +84,8 @@ export async function upsertAgentPackage(row: AgentPackageRow): Promise<void> {
         storage_transaction = excluded.storage_transaction,
         storage_digest = excluded.storage_digest,
         updated_at = excluded.updated_at
-    `)
-    .bind(
+    `,
+    [
       row.agent_id,
       row.implementation_hash.toLowerCase(),
       row.package_json,
@@ -100,18 +96,18 @@ export async function upsertAgentPackage(row: AgentPackageRow): Promise<void> {
       row.storage_digest,
       row.created_at,
       row.updated_at,
-    )
-    .run();
+    ],
+  );
 }
 
 export async function getCertification(
   id: string,
 ): Promise<CertificationRow | null> {
   await ensureCertificationSchema();
-  return certificationDatabase()
-    .prepare('SELECT * FROM certification_requests WHERE id = ?1')
-    .bind(id)
-    .first<CertificationRow>();
+  return sqlFirst<CertificationRow>(
+    'SELECT * FROM certification_requests WHERE id = ?1',
+    [id],
+  );
 }
 
 export async function countRecentCertifications(
@@ -119,12 +115,10 @@ export async function countRecentCertifications(
   since: number,
 ): Promise<number> {
   await ensureCertificationSchema();
-  const row = await certificationDatabase()
-    .prepare(
-      "SELECT COUNT(*) AS count FROM certification_requests WHERE owner_address = ?1 AND created_at >= ?2 AND status != 'awaiting_signature'",
-    )
-    .bind(owner.toLowerCase(), since)
-    .first<{ count: number }>();
+  const row = await sqlFirst<{ count: number | string }>(
+    "SELECT COUNT(*) AS count FROM certification_requests WHERE owner_address = ?1 AND created_at >= ?2 AND status != 'awaiting_signature'",
+    [owner.toLowerCase(), since],
+  );
   return Number(row?.count ?? 0);
 }
 
@@ -132,31 +126,27 @@ export async function countGlobalCertifications(
   since: number,
 ): Promise<number> {
   await ensureCertificationSchema();
-  const row = await certificationDatabase()
-    .prepare(
-      "SELECT COUNT(*) AS count FROM certification_requests WHERE created_at >= ?1 AND status != 'awaiting_signature'",
-    )
-    .bind(since)
-    .first<{ count: number }>();
+  const row = await sqlFirst<{ count: number | string }>(
+    "SELECT COUNT(*) AS count FROM certification_requests WHERE created_at >= ?1 AND status != 'awaiting_signature'",
+    [since],
+  );
   return Number(row?.count ?? 0);
 }
 
 export async function deleteExpiredChallenges(now: number): Promise<void> {
   await ensureCertificationSchema();
-  await certificationDatabase()
-    .prepare(
-      "DELETE FROM certification_requests WHERE status = 'awaiting_signature' AND challenge_expires_at <= ?1",
-    )
-    .bind(now)
-    .run();
+  await sqlExec(
+    "DELETE FROM certification_requests WHERE status = 'awaiting_signature' AND challenge_expires_at <= ?1",
+    [now],
+  );
 }
 
 export async function insertCertification(
   row: CertificationRow,
 ): Promise<void> {
   await ensureCertificationSchema();
-  await certificationDatabase()
-    .prepare(`
+  await sqlExec(
+    `
       INSERT INTO certification_requests (
         id, agent_id, implementation_hash, package_url, package_json, agent_name,
         owner_address, challenge_message, challenge_expires_at, resume_token_hash,
@@ -169,8 +159,8 @@ export async function insertCertification(
         ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20,
         ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30
       )
-    `)
-    .bind(
+    `,
+    [
       row.id,
       row.agent_id,
       row.implementation_hash,
@@ -201,8 +191,8 @@ export async function insertCertification(
       row.last_error,
       row.created_at,
       row.updated_at,
-    )
-    .run();
+    ],
+  );
 }
 
 export async function consumeChallenge(
@@ -210,15 +200,16 @@ export async function consumeChallenge(
   resumeTokenHash: string,
   now: number,
 ): Promise<boolean> {
-  const result = await certificationDatabase()
-    .prepare(`
+  const result = await sqlExec(
+    `
       UPDATE certification_requests
       SET status = 'queued', resume_token_hash = ?1, updated_at = ?2, last_error = NULL
       WHERE id = ?3 AND status = 'awaiting_signature' AND challenge_expires_at > ?2
-    `)
-    .bind(resumeTokenHash, now, id)
-    .run();
-  return Number(result.meta.changes) === 1;
+      RETURNING id
+    `,
+    [resumeTokenHash, now, id],
+  );
+  return result.changes === 1;
 }
 
 export async function claimCertification(
@@ -226,30 +217,31 @@ export async function claimCertification(
   holder: string,
   now: number,
 ): Promise<boolean> {
-  const result = await certificationDatabase()
-    .prepare(`
+  const result = await sqlExec(
+    `
       UPDATE certification_requests
       SET processing_token = ?1, processing_until = ?2, updated_at = ?3
       WHERE id = ?4 AND status NOT IN ('sealed', 'rejected', 'failed')
         AND (processing_until IS NULL OR processing_until < ?3)
-    `)
-    .bind(holder, now + 300_000, now, id)
-    .run();
-  return Number(result.meta.changes) === 1;
+      RETURNING id
+    `,
+    [holder, now + 300_000, now, id],
+  );
+  return result.changes === 1;
 }
 
 export async function releaseCertification(
   id: string,
   holder: string,
 ): Promise<void> {
-  await certificationDatabase()
-    .prepare(`
+  await sqlExec(
+    `
       UPDATE certification_requests
       SET processing_token = NULL, processing_until = NULL
       WHERE id = ?1 AND processing_token = ?2
-    `)
-    .bind(id, holder)
-    .run();
+    `,
+    [id, holder],
+  );
 }
 
 export async function updateCertification(
@@ -283,13 +275,11 @@ export async function updateCertification(
   const assignments = entries
     .map(([key], index) => `${key} = ?${index + 1}`)
     .join(', ');
-  const result = await certificationDatabase()
-    .prepare(
-      `UPDATE certification_requests SET ${assignments} WHERE id = ?${entries.length + 1} AND processing_token = ?${entries.length + 2}`,
-    )
-    .bind(...entries.map(([, value]) => value), id, holder)
-    .run();
-  if (Number(result.meta.changes) !== 1)
+  const result = await sqlExec(
+    `UPDATE certification_requests SET ${assignments} WHERE id = ?${entries.length + 1} AND processing_token = ?${entries.length + 2} RETURNING id`,
+    [...entries.map(([, value]) => value), id, holder],
+  );
+  if (result.changes !== 1)
     throw new Error('Certification update lost its processing lease');
 }
 
@@ -309,23 +299,22 @@ export async function acquireIssuerLock(
   holder: string,
   now: number,
 ): Promise<boolean> {
-  const result = await certificationDatabase()
-    .prepare(`
+  const result = await sqlExec(
+    `
       UPDATE certifier_locks SET holder = ?1, lease_until = ?2
       WHERE name = 'issuer' AND (holder IS NULL OR lease_until < ?3)
-    `)
-    .bind(holder, now + 600_000, now)
-    .run();
-  return Number(result.meta.changes) === 1;
+      RETURNING name
+    `,
+    [holder, now + 600_000, now],
+  );
+  return result.changes === 1;
 }
 
 export async function releaseIssuerLock(holder: string): Promise<void> {
-  await certificationDatabase()
-    .prepare(
-      "UPDATE certifier_locks SET holder = NULL, lease_until = 0 WHERE name = 'issuer' AND holder = ?1",
-    )
-    .bind(holder)
-    .run();
+  await sqlExec(
+    "UPDATE certifier_locks SET holder = NULL, lease_until = 0 WHERE name = 'issuer' AND holder = ?1",
+    [holder],
+  );
 }
 
 export function isTerminalStatus(status: CertificationStatus): boolean {

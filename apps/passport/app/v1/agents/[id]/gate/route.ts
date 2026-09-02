@@ -7,6 +7,8 @@ import {
 } from '@/lib/api/public';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const maxDuration = 15;
 
 export function OPTIONS(): Response {
   return publicOptions();

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 
+import { siteOrigin } from '@/lib/site-origin';
 import './globals.css';
 
-const siteOrigin = process.env.SITE_ORIGIN ?? 'http://localhost:3000';
+const resolvedOrigin = siteOrigin();
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteOrigin),
+  metadataBase: new URL(resolvedOrigin),
   title: 'AgentSeal · Trust, verified on 0G',
   description: 'Assess an autonomous agent, issue a version-bound seal, and verify its live trust status on 0G.',
   openGraph: {

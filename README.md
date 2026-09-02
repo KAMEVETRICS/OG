@@ -4,7 +4,7 @@
 
 Before an agent can trade, spend money, or access tools, AgentSeal binds its exact implementation, stress-tests its behavior through 0G Compute, commits the evidence to 0G Storage, issues a time-limited mainnet safety passport, and lets applications enforce the result through `AgentGate`.
 
-**Live Passport:** [agentseal-passport.gabrieltopeawe.chatgpt.site](https://agentseal-passport.gabrieltopeawe.chatgpt.site)
+**Live Passport:** deploy `apps/passport` on Vercel (Root Directory: `apps/passport`). Inspect and `GET /v1` work with no extra database. `/certify` needs the Compute/Storage secrets plus a Neon or Turso database.
 
 ## Why AgentSeal
 
@@ -164,6 +164,14 @@ pnpm passport:dev
 ```
 
 Network reads use the public 0G mainnet RPC by default. Compute, Storage, registration, certification, and deployment writes require the corresponding `.env` credentials. `.env` is ignored and must never be committed.
+
+## Deploy on Vercel
+
+1. Import [https://github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG).
+2. Set **Root Directory** to `apps/passport`. Framework: Next.js. Node.js 22.
+3. Redeploy. Inspect, Atlas/Rogue lookup, and `GET /v1/agents/{id}/passport|gate` work against 0G mainnet with no secrets.
+4. For `/certify`, add `OG_COMPUTE_API_KEY`, `OG_PRIVATE_KEY`, `OG_RPC_URL`, `OG_STORAGE_INDEXER_RPC`, `OG_COMPUTE_MODEL`, `ERC8004_IDENTITY_REGISTRY`, and a database: Vercel **Storage → Neon** (`DATABASE_URL`) or Turso (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`).
+5. Set `SITE_ORIGIN` to the production URL once you have it.
 
 Useful verification commands:
 
