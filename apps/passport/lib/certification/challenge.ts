@@ -4,6 +4,43 @@ import { verifyMessage } from 'ethers';
 
 import { CertificationRequestError } from './errors.ts';
 
+export const CHALLENGE_TTL_MS = 10 * 60 * 1_000;
+const REQUEST_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NONCE_PATTERN = /^[0-9a-f]{32}$/;
+
+export function parseRequestId(value: unknown): string {
+  if (typeof value !== 'string' || !REQUEST_ID_PATTERN.test(value.trim())) {
+    throw new CertificationRequestError('Certification request ID is invalid.');
+  }
+  return value.trim();
+}
+
+export function parseChallengeNonce(value: unknown): string {
+  if (typeof value !== 'string' || !NONCE_PATTERN.test(value)) {
+    throw new CertificationRequestError('Certification challenge nonce is invalid.');
+  }
+  return value;
+}
+
+export function parseChallengeExpiry(value: unknown, now: number): number {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new CertificationRequestError('Certification challenge expiry is invalid.');
+  }
+  const expiresAt = typeof value === 'number' ? value : Date.parse(value);
+  if (!Number.isFinite(expiresAt)) {
+    throw new CertificationRequestError('Certification challenge expiry is invalid.');
+  }
+  if (expiresAt <= now || expiresAt > now + CHALLENGE_TTL_MS) {
+    throw new CertificationRequestError(
+      'This ownership challenge has expired. Start a new request.',
+      409,
+      'challenge_expired',
+    );
+  }
+  return expiresAt;
+}
+
 export function createChallengeMessage(input: {
   requestId: string;
   agentId: string;

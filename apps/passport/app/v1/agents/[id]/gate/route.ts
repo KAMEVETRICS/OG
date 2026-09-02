@@ -5,6 +5,7 @@ import {
   publicJson,
   publicOptions,
 } from '@/lib/api/public';
+import { enforceMemoryQuota } from '@/lib/certification/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,6 +20,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   try {
+    enforceMemoryQuota(request, 'public-gate', 60);
     const { id } = await context.params;
     const { agentId, implementationHash } = parseVerifyQuery(
       id,

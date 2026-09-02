@@ -2,10 +2,11 @@ import {
   agentPackagesOwnerIndexSchema,
   agentPackagesSchema,
   agentPackagesUpdatedIndexSchema,
+  bumpQuotaSchema,
   certificationRequestsSchema,
   certifierLocksSchema,
   certifierQuotasSchema,
-  consumeSignedChallengeSchema,
+  createSignedCertificationSchema,
   ownerCreatedIndexSchema,
   statusUpdatedIndexSchema,
 } from '@/db/schema';
@@ -73,10 +74,12 @@ export async function ensureCertificationSchema(): Promise<void> {
       agentPackagesUpdatedIndexSchema,
       agentPackagesOwnerIndexSchema,
       certifierQuotasSchema,
-      consumeSignedChallengeSchema,
+      bumpQuotaSchema,
+      createSignedCertificationSchema,
       `INSERT INTO certifier_locks(name, holder, lease_until)
        VALUES ('issuer', NULL, 0)
        ON CONFLICT (name) DO NOTHING`,
+      "DELETE FROM certification_requests WHERE status = 'awaiting_signature'",
     ]) {
       await sqlExec(statement);
     }
@@ -153,115 +156,44 @@ export async function getCertification(id: string): Promise<CertificationRow | n
   );
 }
 
-export async function deleteExpiredChallenges(now: number): Promise<void> {
-  await ensureCertificationSchema();
-  await sqlExec(
-    "DELETE FROM certification_requests WHERE status = 'awaiting_signature' AND challenge_expires_at <= $1",
-    [now],
-  );
-}
-
-export async function insertCertification(row: CertificationRow): Promise<void> {
-  await ensureCertificationSchema();
-  await sqlExec(
-    `
-      INSERT INTO certification_requests (
-        id, agent_id, implementation_hash, package_url, package_json, agent_name,
-        owner_address, challenge_message, challenge_expires_at, resume_token_hash,
-        status, current_case, results_json, report_json, safety_score, passed_checks,
-        total_checks, critical_failures, evidence_root, evidence_transaction,
-        evidence_digest, seal_id, seal_transaction, seal_expires_at, gate_admitted,
-        processing_token, processing_until, last_error, created_at, updated_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
-      )
-    `,
-    [
-      row.id,
-      row.agent_id,
-      row.implementation_hash,
-      row.package_url,
-      row.package_json,
-      row.agent_name,
-      row.owner_address,
-      row.challenge_message,
-      row.challenge_expires_at,
-      row.resume_token_hash,
-      row.status,
-      row.current_case,
-      row.results_json,
-      row.report_json,
-      row.safety_score,
-      row.passed_checks,
-      row.total_checks,
-      row.critical_failures,
-      row.evidence_root,
-      row.evidence_transaction,
-      row.evidence_digest,
-      row.seal_id,
-      row.seal_transaction,
-      row.seal_expires_at,
-      row.gate_admitted,
-      row.processing_token,
-      row.processing_until,
-      row.last_error,
-      row.created_at,
-      row.updated_at,
-    ],
-  );
-}
-
-export async function countPendingChallenges(filter?: {
-  agentId?: string;
-  owner?: string;
-}): Promise<number> {
-  await ensureCertificationSchema();
-  if (filter?.agentId) {
-    const row = await sqlFirst<{ count: number | string }>(
-      "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature' AND agent_id = $1",
-      [filter.agentId],
-    );
-    return Number(row?.count ?? 0);
-  }
-  if (filter?.owner) {
-    const row = await sqlFirst<{ count: number | string }>(
-      "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature' AND owner_address = $1",
-      [filter.owner.toLowerCase()],
-    );
-    return Number(row?.count ?? 0);
-  }
-  const row = await sqlFirst<{ count: number | string }>(
-    "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature'",
-  );
-  return Number(row?.count ?? 0);
-}
-
-export async function consumeSignedChallenge(input: {
+export async function createSignedCertification(input: {
   id: string;
+  agentId: string;
+  implementationHash: string;
+  packageUrl: string;
+  packageJson: string;
+  agentName: string;
+  owner: string;
+  challengeMessage: string;
+  expiresAt: number;
   resumeTokenHash: string;
   now: number;
-  owner: string;
   ownerLimit: number;
   globalLimit: number;
 }): Promise<void> {
   await ensureCertificationSchema();
   const day = new Date(input.now).toISOString().slice(0, 10);
   try {
-    const row = await sqlFirst<{ consume_signed_challenge: string }>(
-      'SELECT consume_signed_challenge($1, $2, $3, $4, $5, $6, $7)',
+    const row = await sqlFirst<{ create_signed_certification: string }>(
+      'SELECT create_signed_certification($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
       [
         input.id,
+        input.agentId,
+        input.implementationHash,
+        input.packageUrl,
+        input.packageJson,
+        input.agentName,
+        input.owner.toLowerCase(),
+        input.challengeMessage,
+        input.expiresAt,
         input.resumeTokenHash,
         input.now,
         day,
-        input.owner.toLowerCase(),
         input.ownerLimit,
         input.globalLimit,
       ],
     );
-    if (!row?.consume_signed_challenge) {
+    if (!row?.create_signed_certification) {
       throw new CertificationRequestError(
         'This ownership challenge was already used.',
         409,
@@ -289,6 +221,13 @@ export async function consumeSignedChallenge(input: {
         'This ownership challenge was already used.',
         409,
         'challenge_consumed',
+      );
+    }
+    if (message.includes('challenge_expired')) {
+      throw new CertificationRequestError(
+        'This ownership challenge has expired. Start a new request.',
+        409,
+        'challenge_expired',
       );
     }
     throw error;
@@ -379,5 +318,5 @@ export async function releaseIssuerLock(holder: string): Promise<void> {
 }
 
 export function isTerminalStatus(status: CertificationStatus): boolean {
-  return status === 'sealed' || status === 'rejected' || status === 'failed';
+  return status === 'sealed' || status === 'rejected';
 }

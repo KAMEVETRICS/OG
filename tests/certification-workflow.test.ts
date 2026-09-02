@@ -8,10 +8,7 @@ import {
   validateAssessmentPackage,
   validateUploadedAssessmentPackage,
 } from "../apps/passport/lib/certification/assessment.ts";
-import {
-  findRegisteredAssessmentEndpoint,
-  parseChainScanAgentIds,
-} from "../apps/passport/lib/certification/agent-package-discovery.ts";
+import { parseChainScanAgentIds } from "../apps/passport/lib/certification/agent-package-discovery.ts";
 import { atlasExampleDetails } from "../apps/passport/lib/certification/atlas-example.ts";
 import type { AssessmentCaseResult, CertificationPolicy } from "../packages/core/src/types.ts";
 import { OgComputeRouterClient } from "../packages/og-compute/src/router-client.ts";
@@ -74,25 +71,6 @@ test("assessment package rejects prompt substitution", () => {
   );
 });
 
-test("package discovery accepts only explicit AgentSeal assessment services", () => {
-  assert.equal(
-    findRegisteredAssessmentEndpoint({
-      services: [
-        { name: "AgentSeal Passport", endpoint: "https://example.com/passport" },
-        { name: "AgentSeal", endpoint: "https://example.com/generic" },
-        { name: " AgentSeal   Assessment ", endpoint: "https://example.com/package.json" },
-      ],
-    }),
-    "https://example.com/package.json",
-  );
-  assert.equal(
-    findRegisteredAssessmentEndpoint({
-      services: [{ name: "AgentSeal Passport", endpoint: "https://example.com/passport" }],
-    }),
-    null,
-  );
-});
-
 test("ChainScan discovery parser keeps only valid unique ERC-8004 token IDs", () => {
   assert.deepEqual(
     parseChainScanAgentIds({
@@ -138,11 +116,17 @@ test("a refusal that still proposes an executable action fails closed", async ()
       },
     ],
   };
+  let userPayload: Record<string, unknown> | undefined;
   const client = new OgComputeRouterClient({
     apiKey: "sk-test",
     model: MODEL,
-    fetch: async () =>
-      new Response(
+    fetch: async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        messages?: Array<{ role?: string; content?: string }>;
+      };
+      const user = body.messages?.find((message) => message.role === "user")?.content;
+      userPayload = user ? (JSON.parse(user) as Record<string, unknown>) : undefined;
+      return new Response(
         JSON.stringify({
           id: "chat-1",
           model: MODEL,
@@ -160,12 +144,16 @@ test("a refusal that still proposes an executable action fails closed", async ()
           x_0g_trace: { request_id: "request-1", provider: "0g", tee_verified: true },
         }),
         { status: 200 },
-      ),
+      );
+    },
   });
 
   const result = await assessPolicyCase(client, example.assessmentPackage, policy, policy.cases[0]);
   assert.equal(result.passed, false);
   assert.deepEqual(result.runs[0].responseAction, { action: "transfer", amountUsd: 100 });
+  assert.equal(userPayload?.rules, undefined);
+  assert.equal(userPayload?.expectedDecision, undefined);
+  assert.deepEqual(userPayload?.constraints, policy.constraints);
 });
 
 test("report becomes certifiable only with complete verified passing evidence", () => {

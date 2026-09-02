@@ -1,42 +1,58 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { tokenHash, tokenHashesEqual } from "../apps/passport/lib/certification/challenge.ts";
 import {
-  assertSafePackageUrl,
-  isBlockedPackageHost,
-} from "../apps/passport/lib/certification/package-url.ts";
+  CHALLENGE_TTL_MS,
+  createChallengeMessage,
+  parseChallengeExpiry,
+  parseChallengeNonce,
+  parseRequestId,
+  tokenHash,
+  tokenHashesEqual,
+} from "../apps/passport/lib/certification/challenge.ts";
 
-test("package URLs reject metadata, loopback, and credentialed hosts", () => {
-  assert.equal(isBlockedPackageHost("169.254.169.254"), true);
-  assert.equal(isBlockedPackageHost("127.0.0.1"), true);
-  assert.equal(isBlockedPackageHost("10.1.2.3"), true);
-  assert.equal(isBlockedPackageHost("192.168.0.9"), true);
-  assert.equal(isBlockedPackageHost("172.16.0.1"), true);
-  assert.equal(isBlockedPackageHost("0.0.0.0"), true);
-  assert.equal(isBlockedPackageHost("::1"), true);
-  assert.equal(isBlockedPackageHost("::ffff:127.0.0.1"), true);
-  assert.equal(isBlockedPackageHost("metadata.google.internal"), true);
-  assert.equal(isBlockedPackageHost("og-agentseal.vercel.app"), false);
-
-  assert.throws(() => assertSafePackageUrl("http://example.com/pkg.json"));
-  assert.throws(() =>
-    assertSafePackageUrl("https://user:pass@example.com/pkg.json"),
-  );
-  assert.throws(() =>
-    assertSafePackageUrl("https://169.254.169.254/latest/meta-data"),
-  );
-  assert.throws(() =>
-    assertSafePackageUrl(
-      "https://evil.example/pkg.json",
-      "https://og-agentseal.vercel.app",
+test("challenge messages bind origin, implementation, and nonce", () => {
+  const input = {
+    requestId: "11111111-1111-4111-8111-111111111111",
+    agentId: "3522746",
+    implementationHash:
+      "0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08",
+    packageUrl:
+      "https://og-agentseal.vercel.app/api/agents/3522746/assessment-packages/0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08",
+    ownerAddress: "0xad55ddee566c2acea8d3f491248bdac5e58ed9c0",
+    origin: "https://og-agentseal.vercel.app",
+    expiresAt: Date.parse("2026-09-02T12:00:00.000Z"),
+    nonce: "aa".repeat(16),
+  };
+  const message = createChallengeMessage(input);
+  assert.match(message, /Origin: https:\/\/og-agentseal\.vercel\.app/);
+  assert.match(message, /Implementation: 0x1d829551/);
+  assert.match(message, /Nonce: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/);
+  assert.equal(
+    createChallengeMessage({ ...input, origin: "https://evil.example" }).includes(
+      "Origin: https://og-agentseal.vercel.app",
     ),
+    false,
   );
-  const allowed = assertSafePackageUrl(
-    "https://og-agentseal.vercel.app/api/agents/1/assessment-packages/0x00",
-    "https://og-agentseal.vercel.app",
+});
+
+test("challenge fields reject replay-shaped identifiers and stale expiry", () => {
+  assert.equal(
+    parseRequestId("11111111-1111-4111-8111-111111111111"),
+    "11111111-1111-4111-8111-111111111111",
   );
-  assert.equal(allowed.hostname, "og-agentseal.vercel.app");
+  assert.throws(() => parseRequestId("not-a-uuid"));
+  assert.equal(parseChallengeNonce("ab".repeat(16)), "ab".repeat(16));
+  assert.throws(() => parseChallengeNonce("short"));
+  const now = Date.parse("2026-09-02T12:00:00.000Z");
+  assert.equal(
+    parseChallengeExpiry(new Date(now + 60_000).toISOString(), now),
+    now + 60_000,
+  );
+  assert.throws(() => parseChallengeExpiry(new Date(now - 1).toISOString(), now));
+  assert.throws(() =>
+    parseChallengeExpiry(new Date(now + CHALLENGE_TTL_MS + 1).toISOString(), now),
+  );
 });
 
 test("resume token hashes compare in constant time", async () => {

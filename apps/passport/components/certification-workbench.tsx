@@ -75,6 +75,7 @@ function reduceWorkbench(state: Workbench, patch: Partial<Workbench>): Workbench
 
 interface ChallengeResponse {
   requestId: string;
+  nonce: string;
   ownerAddress: string;
   agentName: string;
   challengeMessage: string;
@@ -335,17 +336,19 @@ export function CertificationWorkbench({
         );
       }
       await ensureOgMainnet(window.ethereum);
+      const packageFields =
+        selectedAgent.packageReady && !prompt && !ui.pkg
+          ? {}
+          : prompt
+            ? { systemPrompt: prompt }
+            : { assessmentPackage: ui.pkg };
       const challenge = await responseJson<ChallengeResponse>(
         await fetch('/api/certifications/challenge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agentId: selectedAgent.agentId,
-            ...(selectedAgent.packageReady && !prompt && !ui.pkg
-              ? {}
-              : prompt
-                ? { systemPrompt: prompt }
-                : { assessmentPackage: ui.pkg }),
+            ...packageFields,
           }),
         }),
       );
@@ -366,7 +369,14 @@ export function CertificationWorkbench({
         await fetch('/api/certifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requestId: challenge.requestId, signature }),
+          body: JSON.stringify({
+            requestId: challenge.requestId,
+            nonce: challenge.nonce,
+            expiresAt: challenge.expiresAt,
+            agentId: selectedAgent.agentId,
+            signature,
+            ...packageFields,
+          }),
         }),
       );
       window.sessionStorage.setItem(

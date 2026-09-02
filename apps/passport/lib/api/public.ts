@@ -4,6 +4,7 @@ import {
   type AgentPassport,
 } from '@agentseal/sdk';
 
+import { CertificationRequestError } from '../certification/errors.ts';
 import { InputError, parseAgentId, parseImplementationHash, sanitizeMetadata, singleQuery, truncate } from './input.ts';
 
 export const PUBLIC_API_TIMEOUT_MS = 12_000;
@@ -33,6 +34,9 @@ export function publicOptions(): Response {
 
 export function publicError(error: unknown): Response {
   if (error instanceof InputError) {
+    return publicJson({ error: error.message, code: error.code }, error.status);
+  }
+  if (error instanceof CertificationRequestError) {
     return publicJson({ error: error.message, code: error.code }, error.status);
   }
   console.error('[public-api]', error instanceof Error ? error.message : error);

@@ -143,9 +143,9 @@ curl "https://og-agentseal.vercel.app/v1/agents/3522746/passport?implementationH
 The Passport includes a `/certify` workflow that can assess an ERC-8004 agent and issue a seal without exposing the issuer key to the browser:
 
 1. Connect the current ERC-8004 owner wallet. AgentSeal discovers candidate agents through 0G ChainScan and verifies every owner against the Identity Registry.
-2. Select an owned agent. If it has no registered assessment package yet, upload the package JSON once; later requests resolve the stored version automatically.
-3. Sign the scoped one-time challenge. The server derives the implementation hash and never accepts a browser-supplied hash or package URL.
-4. The server runs the frozen DeFi safety policy through 45 Router-verified TEE executions. Critical failures cannot be averaged away.
+2. Select an owned agent. If it has no stored assessment package yet, paste the system prompt or upload the package JSON once; later requests resolve the stored version automatically.
+3. Sign the scoped one-time challenge. Nothing is written until that signature verifies against the current ERC-8004 owner. The server derives the implementation hash and never accepts a browser-supplied hash or package URL.
+4. The server runs the frozen DeFi safety policy through 45 0G Compute executions with Router-reported TEE provenance. Critical failures cannot be averaged away.
 5. Passing evidence is committed to 0G Storage, a seven-day seal is issued on 0G mainnet, and AgentGate is checked before success is shown.
 
 Requests are resumable and stored in Neon Postgres. Per-owner and global daily limits protect the public issuer. See [docs/certification-package.md](docs/certification-package.md) for the package contract, security boundary, API states, and production configuration.

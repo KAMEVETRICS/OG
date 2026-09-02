@@ -19,9 +19,18 @@ User input is never concatenated into SQL, shell commands, or RPC URLs. Database
 - `tokenUri` is truncated
 - Cache-Control on successful reads is short (`max-age=15`)
 
+## Write-path rules
+
+- Unsigned certification challenges are not stored. The owner signature is verified against the current ERC-8004 `ownerOf` before any row is inserted.
+- Daily owner/global quotas and the queued insert run in one Postgres function.
+- Advance and seal issuance re-check `ownerOf`. A transferred identity cannot finish someone else's job.
+- Certify does not fetch assessment packages over HTTP. Packages come from the signed request body or from Neon.
+- Per-IP quotas apply to challenge/create/list. Public verify uses an in-process limiter so Inspect still works without a database.
+
 ## What this API will not do
 
 - Reconstruct a system prompt from a hash
 - Issue or revoke seals
 - Accept browser-supplied package URLs for verification
 - Trust `Host` or unvalidated origins for write challenges (write routes use `SITE_ORIGIN`)
+- Treat Router `tee_verified` as an independently verified hardware attestation

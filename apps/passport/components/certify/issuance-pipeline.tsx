@@ -30,7 +30,7 @@ const STEPS = [
   },
   {
     title: 'Assess',
-    detail: '45 Router-verified runs execute across 15 policy cases',
+    detail: '45 0G Compute runs across 15 policy cases',
     icon: Cpu,
   },
   {
@@ -99,7 +99,7 @@ export function IssuancePipeline({
         aria-label={`${progress}% of assessment runs completed`}
       >
         <div>
-          <span>TEE RUNS</span>
+          <span>COMPUTE RUNS</span>
           <strong>
             {certification?.completedRuns ?? 0}/{certification?.totalRuns ?? 45}
           </strong>

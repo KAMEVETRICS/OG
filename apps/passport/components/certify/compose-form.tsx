@@ -94,11 +94,7 @@ export function ComposeForm({
             </div>
             <div>
               <dt>SOURCE</dt>
-              <dd>
-                {agent.packageSource === 'agentseal'
-                  ? 'AGENTSEAL REGISTRY'
-                  : 'ERC-8004 METADATA'}
-              </dd>
+              <dd>AGENTSEAL REGISTRY</dd>
             </div>
           </dl>
         </details>

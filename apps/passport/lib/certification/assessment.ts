@@ -17,7 +17,6 @@ import {
   OG_COMPUTE_REQUEST_CONFIG,
   OgComputeRouterClient,
 } from '@agentseal/og-compute';
-import { assertSafePackageUrl } from './package-url.ts';
 import type { AssessmentPackage } from './types.ts';
 
 export const SELF_SERVICE_EVALUATOR_VERSION = 'agentseal-evaluator/0.3.0';
@@ -269,80 +268,6 @@ export function createAssessmentPackageFromPrompt(input: {
   );
 }
 
-export async function fetchAssessmentPackage(
-  packageUrl: string,
-  expectedImplementationHash: string,
-  expectedModelRevision: string,
-  allowedOrigin: string,
-): Promise<AssessmentPackage> {
-  const url = assertSafePackageUrl(packageUrl, allowedOrigin);
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    redirect: 'manual',
-    signal: AbortSignal.timeout(8_000),
-    cache: 'no-store',
-  });
-  if (response.status >= 300 && response.status < 400) {
-    throw new Error('Assessment package redirects are not allowed');
-  }
-  if (!response.ok)
-    throw new Error(`Assessment package returned HTTP ${response.status}`);
-  const declaredLength = Number(response.headers.get('content-length') ?? '0');
-  if (declaredLength > MAX_ASSESSMENT_PACKAGE_BYTES)
-    throw new Error('Assessment package exceeds 64 KB');
-  const text = await response.text();
-  if (new TextEncoder().encode(text).length > MAX_ASSESSMENT_PACKAGE_BYTES) {
-    throw new Error('Assessment package exceeds 64 KB');
-  }
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    throw new Error('Assessment package is not valid JSON');
-  }
-  return validateAssessmentPackage(
-    raw,
-    expectedImplementationHash,
-    expectedModelRevision,
-  );
-}
-
-export async function discoverAssessmentPackage(
-  packageUrl: string,
-  expectedModelRevision: string,
-  allowedOrigin: string,
-): Promise<{
-  assessmentPackage: AssessmentPackage;
-  implementationHash: string;
-}> {
-  const url = assertSafePackageUrl(packageUrl, allowedOrigin);
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-    redirect: 'manual',
-    signal: AbortSignal.timeout(8_000),
-    cache: 'no-store',
-  });
-  if (response.status >= 300 && response.status < 400) {
-    throw new Error('Assessment package redirects are not allowed');
-  }
-  if (!response.ok)
-    throw new Error(`Assessment package returned HTTP ${response.status}`);
-  const declaredLength = Number(response.headers.get('content-length') ?? '0');
-  if (declaredLength > MAX_ASSESSMENT_PACKAGE_BYTES)
-    throw new Error('Assessment package exceeds 64 KB');
-  const text = await response.text();
-  if (new TextEncoder().encode(text).length > MAX_ASSESSMENT_PACKAGE_BYTES) {
-    throw new Error('Assessment package exceeds 64 KB');
-  }
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    throw new Error('Assessment package is not valid JSON');
-  }
-  return validateUploadedAssessmentPackage(raw, expectedModelRevision);
-}
-
 function isDecision(value: unknown): value is AgentDecision {
   return value === 'ALLOW' || value === 'BLOCK' || value === 'REFUSE';
 }
@@ -368,19 +293,13 @@ async function runAgentResponse(
   assessmentPackage: AssessmentPackage,
   input: AgentTestInput,
 ): Promise<EvaluatedAgentResponse> {
-  const visiblePolicy = {
-    id: input.policy.id,
-    version: input.policy.version,
-    constraints: input.policy.constraints,
-    rules: input.policy.rules,
-  };
   const completion = await client.completeJson<ModelDecision>([
     { role: 'system', content: assessmentPackage.systemPrompt },
     {
       role: 'user',
       content: JSON.stringify({
         assessmentProtocol: 'agentseal-defi-safe-v1',
-        policy: visiblePolicy,
+        constraints: input.policy.constraints,
         request: input.request,
         context: input.context,
         proposedAction: input.proposedAction,

@@ -86,13 +86,44 @@ export const certifierQuotasSchema = `
   )
 `;
 
-export const consumeSignedChallengeSchema = `
-  CREATE OR REPLACE FUNCTION consume_signed_challenge(
+export const bumpQuotaSchema = `
+  CREATE OR REPLACE FUNCTION bump_quota(
+    p_window TEXT,
+    p_key TEXT,
+    p_limit INTEGER
+  ) RETURNS TEXT
+  LANGUAGE plpgsql
+  AS $$
+  DECLARE
+    v_count INTEGER;
+  BEGIN
+    INSERT INTO certifier_quotas(day, key, count) VALUES (p_window, p_key, 1)
+    ON CONFLICT (day, key) DO UPDATE
+      SET count = certifier_quotas.count + 1
+      WHERE certifier_quotas.count < p_limit
+    RETURNING count INTO v_count;
+    IF v_count IS NULL THEN
+      RAISE EXCEPTION 'rate_limit';
+    END IF;
+    RETURN 'ok';
+  END;
+  $$
+`;
+
+export const createSignedCertificationSchema = `
+  CREATE OR REPLACE FUNCTION create_signed_certification(
     p_id TEXT,
-    p_hash TEXT,
+    p_agent_id TEXT,
+    p_implementation_hash TEXT,
+    p_package_url TEXT,
+    p_package_json TEXT,
+    p_agent_name TEXT,
+    p_owner TEXT,
+    p_challenge_message TEXT,
+    p_expires_at BIGINT,
+    p_resume_hash TEXT,
     p_now BIGINT,
     p_day TEXT,
-    p_owner TEXT,
     p_owner_limit INTEGER,
     p_global_limit INTEGER
   ) RETURNS TEXT
@@ -103,6 +134,10 @@ export const consumeSignedChallengeSchema = `
     v_global INTEGER;
     v_id TEXT;
   BEGIN
+    IF p_expires_at <= p_now THEN
+      RAISE EXCEPTION 'challenge_expired';
+    END IF;
+
     INSERT INTO certifier_quotas(day, key, count) VALUES (p_day, p_owner, 1)
     ON CONFLICT (day, key) DO UPDATE
       SET count = certifier_quotas.count + 1
@@ -121,9 +156,22 @@ export const consumeSignedChallengeSchema = `
       RAISE EXCEPTION 'global_rate_limit';
     END IF;
 
-    UPDATE certification_requests
-    SET status = 'queued', resume_token_hash = p_hash, updated_at = p_now, last_error = NULL
-    WHERE id = p_id AND status = 'awaiting_signature' AND challenge_expires_at > p_now
+    INSERT INTO certification_requests (
+      id, agent_id, implementation_hash, package_url, package_json, agent_name,
+      owner_address, challenge_message, challenge_expires_at, resume_token_hash,
+      status, current_case, results_json, report_json, safety_score, passed_checks,
+      total_checks, critical_failures, evidence_root, evidence_transaction,
+      evidence_digest, seal_id, seal_transaction, seal_expires_at, gate_admitted,
+      processing_token, processing_until, last_error, created_at, updated_at
+    ) VALUES (
+      p_id, p_agent_id, p_implementation_hash, p_package_url, p_package_json, p_agent_name,
+      p_owner, p_challenge_message, p_expires_at, p_resume_hash,
+      'queued', 0, '[]', NULL, NULL, NULL,
+      NULL, NULL, NULL, NULL,
+      NULL, NULL, NULL, NULL, NULL,
+      NULL, NULL, NULL, p_now, p_now
+    )
+    ON CONFLICT (id) DO NOTHING
     RETURNING id INTO v_id;
     IF v_id IS NULL THEN
       RAISE EXCEPTION 'challenge_consumed';

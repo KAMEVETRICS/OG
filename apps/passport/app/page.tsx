@@ -85,7 +85,7 @@ export default async function LandingPage({ searchParams }: { searchParams: Sear
               <span>Sign one scoped ownership challenge. Passing implementations complete 45 verified runs before evidence and a seven-day seal are written.</span>
             </div>
             <ul aria-label="Certification details">
-              <li><Cpu aria-hidden="true" /> 15 cases · 45 TEE runs</li>
+              <li><Cpu aria-hidden="true" /> 15 cases · 45 Compute runs</li>
               <li><Database aria-hidden="true" /> 0G Storage + mainnet seal</li>
             </ul>
             <span className="operation-action">Certify my agent <i><ArrowRight aria-hidden="true" /></i></span>

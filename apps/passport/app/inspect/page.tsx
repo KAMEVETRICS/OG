@@ -128,7 +128,7 @@ export default async function InspectPage({
           icon: Check,
           complete: true,
         },
-        { label: 'TEE evidence', value: 'ROUTER-VERIFIED', icon: Cpu, complete: true },
+        { label: 'TEE evidence', value: 'ROUTER-REPORTED', icon: Cpu, complete: true },
         {
           label: 'Critical failures',
           value: String(seal.criticalFailures),

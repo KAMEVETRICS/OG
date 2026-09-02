@@ -69,7 +69,7 @@ Missing identity, missing seal, revocation, expiry, issuer mismatch, critical fa
 
 ## TEE boundary
 
-0G Compute execution records set `verify_tee: true`. AgentSeal retains Router request, provider, model, billing, response-hash, and `tee_verified` provenance fields. This proves execution provenance as verified by the Router; the benchmark evaluator separately determines behavioral correctness. The MVP does not claim that a TEE proves an answer is safe.
+0G Compute execution records set `verify_tee: true`. AgentSeal fail-closes unless the Router JSON includes `x_0g_trace.tee_verified: true`, then stores that Router-reported flag with request, provider, model, billing, and response-hash. This is not an independent attestation check. The benchmark evaluator separately determines behavioral correctness. A seal does not prove that a live agent endpoint runs the assessed prompt.
 
 ## Mainnet configuration
 

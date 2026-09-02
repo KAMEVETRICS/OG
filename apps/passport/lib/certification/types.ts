@@ -5,7 +5,6 @@ import type {
 } from '@agentseal/core/types';
 
 export const CERTIFICATION_STATUSES = [
-  'awaiting_signature',
   'queued',
   'assessing',
   'rejected',
@@ -13,7 +12,6 @@ export const CERTIFICATION_STATUSES = [
   'uploading',
   'issuing',
   'sealed',
-  'failed',
 ] as const;
 
 export type CertificationStatus = (typeof CERTIFICATION_STATUSES)[number];
@@ -53,7 +51,7 @@ export interface OwnedAgent {
   active: boolean;
   packageReady: boolean;
   implementationHash: string | null;
-  packageSource: 'registered' | 'agentseal' | null;
+  packageSource: 'agentseal' | null;
   currentSeal: CurrentSeal | null;
 }
 

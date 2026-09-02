@@ -28,10 +28,7 @@ export function stepState(
   index: number,
 ): 'pending' | 'active' | 'complete' | 'failed' {
   if (!certification) return index === 0 ? 'active' : 'pending';
-  if (
-    (certification.status === 'failed' || certification.status === 'rejected') &&
-    index === 2
-  ) {
+  if (certification.status === 'rejected' && index === 2) {
     return 'failed';
   }
   const completed =
@@ -39,9 +36,7 @@ export function stepState(
       ? 4
       : ['assessed', 'uploading', 'issuing'].includes(certification.status)
         ? 3
-        : ['queued', 'assessing', 'rejected'].includes(certification.status)
-          ? 2
-          : 1;
+        : 2;
   if (index < completed) return 'complete';
   if (index === completed) return 'active';
   return 'pending';

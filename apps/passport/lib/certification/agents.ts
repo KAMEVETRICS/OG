@@ -1,19 +1,11 @@
 import { AgentSealClient, OG_MAINNET, type AgentIdentity } from '@agentseal/sdk';
 import { getAddress, isAddress } from 'ethers';
 
-import {
-  discoverAssessmentPackage,
-  validateAssessmentPackage,
-} from './assessment';
+import { validateAssessmentPackage } from './assessment';
 import { getLatestAgentPackage } from './database';
-import {
-  findRegisteredAssessmentEndpoint,
-  parseChainScanAgentIds,
-} from './agent-package-discovery';
-import { fixtureHashesFor } from './demo-fixtures';
+import { parseChainScanAgentIds } from './agent-package-discovery';
 import { certificationModelRevision, certifierProvider } from './env';
 import { CertificationRequestError } from './errors';
-import { isSameOriginUrl } from './package-url.ts';
 import type { AssessmentPackage, CurrentSeal, OwnedAgent } from './types';
 
 const CHAINSCAN_TOKENS_URL = 'https://chainscan.0g.ai/open/nft/tokens';
@@ -22,11 +14,8 @@ export async function findCurrentSeal(
   agentId: string,
   implementationHash?: string | null,
 ): Promise<CurrentSeal | null> {
-  const hashes = [
-    ...(implementationHash ? [implementationHash] : []),
-    ...fixtureHashesFor(agentId),
-  ];
-  const found = await identityClient().currentValidSeal(agentId, hashes);
+  if (!implementationHash) return null;
+  const found = await identityClient().currentValidSeal(agentId, [implementationHash]);
   if (!found) return null;
   return {
     sealId: found.sealId.toString(),
@@ -37,13 +26,6 @@ export async function findCurrentSeal(
   };
 }
 
-export interface ResolvedAgentPackage {
-  assessmentPackage: AssessmentPackage;
-  implementationHash: string;
-  packageUrl: string;
-  source: 'registered' | 'agentseal';
-}
-
 function identityClient(): AgentSealClient {
   return new AgentSealClient({
     provider: certifierProvider(),
@@ -51,14 +33,6 @@ function identityClient(): AgentSealClient {
       process.env.ERC8004_IDENTITY_REGISTRY?.trim() ||
       OG_MAINNET.identityRegistry,
   });
-}
-
-function managedPackageUrl(
-  origin: string,
-  agentId: string,
-  implementationHash: string,
-): string {
-  return `${origin}/api/agents/${agentId}/assessment-packages/${implementationHash}`;
 }
 
 async function chainscanAgentIds(owner: string): Promise<string[]> {
@@ -87,63 +61,38 @@ async function chainscanAgentIds(owner: string): Promise<string[]> {
   return parseChainScanAgentIds(await response.json());
 }
 
-export async function resolveAgentPackage(
-  identity: AgentIdentity,
-  origin: string,
-): Promise<ResolvedAgentPackage | null> {
-  const agentId = identity.agentId.toString();
-  const owner = getAddress(identity.owner).toLowerCase();
+export async function resolveStoredPackage(
+  agentId: string,
+  owner: string,
+): Promise<{
+  assessmentPackage: AssessmentPackage;
+  implementationHash: string;
+} | null> {
   const stored = await getLatestAgentPackage(agentId, owner);
-  if (stored) {
-    try {
-      const assessmentPackage = validateAssessmentPackage(
+  if (!stored) return null;
+  try {
+    return {
+      assessmentPackage: validateAssessmentPackage(
         JSON.parse(stored.package_json) as unknown,
         stored.implementation_hash,
         certificationModelRevision(),
-      );
-      return {
-        assessmentPackage,
-        implementationHash: stored.implementation_hash,
-        packageUrl: managedPackageUrl(
-          origin,
-          agentId,
-          stored.implementation_hash,
-        ),
-        source: 'agentseal',
-      };
-    } catch (error) {
-      console.error(
-        '[certification] Stored package failed validation:',
-        error instanceof Error ? error.message : error,
-      );
-    }
-  }
-
-  const endpoint = findRegisteredAssessmentEndpoint(identity.metadata);
-  if (!endpoint || !isSameOriginUrl(endpoint, origin)) return null;
-  try {
-    const discovered = await discoverAssessmentPackage(
-      endpoint,
-      certificationModelRevision(),
-      origin,
-    );
-    return { ...discovered, packageUrl: endpoint, source: 'registered' };
+      ),
+      implementationHash: stored.implementation_hash,
+    };
   } catch (error) {
     console.error(
-      '[certification] Registered package failed validation:',
+      '[certification] Stored package failed validation:',
       error instanceof Error ? error.message : error,
     );
     return null;
   }
 }
 
-async function toOwnedAgent(
-  identity: AgentIdentity,
-  origin: string,
-): Promise<OwnedAgent> {
+async function toOwnedAgent(identity: AgentIdentity): Promise<OwnedAgent> {
   const agentId = identity.agentId.toString();
-  const resolved = await resolveAgentPackage(identity, origin);
-  const currentSeal = await findCurrentSeal(agentId, resolved?.implementationHash);
+  const owner = getAddress(identity.owner).toLowerCase();
+  const stored = await resolveStoredPackage(agentId, owner);
+  const currentSeal = await findCurrentSeal(agentId, stored?.implementationHash);
   return {
     agentId,
     name:
@@ -157,10 +106,9 @@ async function toOwnedAgent(
         ? identity.metadata.description.trim().slice(0, 300)
         : null,
     active: identity.metadata?.active !== false,
-    packageReady: resolved !== null,
-    implementationHash:
-      resolved?.implementationHash ?? currentSeal?.implementationHash ?? null,
-    packageSource: resolved?.source ?? null,
+    packageReady: stored !== null,
+    implementationHash: stored?.implementationHash ?? null,
+    packageSource: stored ? 'agentseal' : null,
     currentSeal,
   };
 }
@@ -168,7 +116,6 @@ async function toOwnedAgent(
 export async function getOwnedAgent(
   agentId: string,
   ownerInput: string,
-  origin: string,
 ): Promise<OwnedAgent> {
   if (!/^[1-9][0-9]*$/.test(agentId))
     throw new CertificationRequestError('Enter a valid ERC-8004 agent ID.');
@@ -189,13 +136,10 @@ export async function getOwnedAgent(
       'owner_mismatch',
     );
   }
-  return toOwnedAgent(identity, origin);
+  return toOwnedAgent(identity);
 }
 
-export async function listOwnedAgents(
-  ownerInput: string,
-  origin: string,
-): Promise<OwnedAgent[]> {
+export async function listOwnedAgents(ownerInput: string): Promise<OwnedAgent[]> {
   if (!isAddress(ownerInput))
     throw new CertificationRequestError('Connect a valid EVM owner wallet.');
   const owner = getAddress(ownerInput);
@@ -206,7 +150,7 @@ export async function listOwnedAgents(
       try {
         const identity = await client.getIdentity(agentId);
         if (!identity || getAddress(identity.owner) !== owner) return null;
-        return await toOwnedAgent(identity, origin);
+        return await toOwnedAgent(identity);
       } catch (error) {
         console.error(
           `[certification] Agent ${agentId} discovery failed:`,

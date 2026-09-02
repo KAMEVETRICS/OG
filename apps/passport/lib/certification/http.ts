@@ -1,15 +1,36 @@
 import { InputError, rejectDangerousKeys } from '@/lib/api/input';
 import { CertificationRequestError, CertificationStorageError } from './errors';
 
+async function readBodyCapped(request: Request, maximumBytes: number): Promise<string> {
+  const declared = Number(request.headers.get('content-length') ?? Number.NaN);
+  if (Number.isFinite(declared) && declared > maximumBytes) {
+    throw new CertificationRequestError('Request body is too large.', 413, 'payload_too_large');
+  }
+  const reader = request.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maximumBytes) {
+      await reader.cancel();
+      throw new CertificationRequestError('Request body is too large.', 413, 'payload_too_large');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 export async function readJsonObject(request: Request, maximumBytes = 16_384): Promise<Record<string, unknown>> {
-  const declaredLength = Number(request.headers.get('content-length') ?? '0');
-  if (!Number.isFinite(declaredLength) || declaredLength > maximumBytes) {
-    throw new CertificationRequestError('Request body is too large.', 413, 'payload_too_large');
-  }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > maximumBytes) {
-    throw new CertificationRequestError('Request body is too large.', 413, 'payload_too_large');
-  }
+  const text = await readBodyCapped(request, maximumBytes);
   let value: unknown;
   try {
     value = JSON.parse(text);

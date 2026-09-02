@@ -50,10 +50,31 @@ export async function getAgentOwner(agentId: string): Promise<string> {
   }
 }
 
+export async function assertSameOwner(
+  row: CertificationRow,
+  holder?: string,
+): Promise<void> {
+  const currentOwner = await getAgentOwner(row.agent_id);
+  if (currentOwner.toLowerCase() === row.owner_address.toLowerCase()) return;
+  if (holder) {
+    await updateCertification(row.id, holder, {
+      status: 'rejected',
+      last_error: 'ERC-8004 ownership changed. Certification cannot continue.',
+      updated_at: Date.now(),
+    });
+  }
+  throw new CertificationRequestError(
+    'ERC-8004 ownership changed. Certification cannot continue.',
+    409,
+    'ownership_changed',
+  );
+}
+
 export async function finalizeCertification(
   row: CertificationRow,
   holder: string,
 ): Promise<void> {
+  await assertSameOwner(row, holder);
   const report = parseAssessmentReport(row);
   if (!report?.certifiable) {
     throw new CertificationRequestError(
