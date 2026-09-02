@@ -8,7 +8,7 @@ export const certificationRequestsSchema = `
     agent_name TEXT NOT NULL,
     owner_address TEXT NOT NULL,
     challenge_message TEXT NOT NULL,
-    challenge_expires_at INTEGER NOT NULL,
+    challenge_expires_at BIGINT NOT NULL,
     resume_token_hash TEXT,
     status TEXT NOT NULL,
     current_case INTEGER NOT NULL DEFAULT 0,
@@ -23,13 +23,13 @@ export const certificationRequestsSchema = `
     evidence_digest TEXT,
     seal_id TEXT,
     seal_transaction TEXT,
-    seal_expires_at INTEGER,
+    seal_expires_at BIGINT,
     gate_admitted INTEGER,
     processing_token TEXT,
-    processing_until INTEGER,
+    processing_until BIGINT,
     last_error TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
   )
 `;
 
@@ -47,7 +47,7 @@ export const certifierLocksSchema = `
   CREATE TABLE IF NOT EXISTS certifier_locks (
     name TEXT PRIMARY KEY,
     holder TEXT,
-    lease_until INTEGER NOT NULL DEFAULT 0
+    lease_until BIGINT NOT NULL DEFAULT 0
   )
 `;
 
@@ -61,8 +61,8 @@ export const agentPackagesSchema = `
     storage_root TEXT NOT NULL,
     storage_transaction TEXT NOT NULL,
     storage_digest TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
     PRIMARY KEY (agent_id, implementation_hash)
   )
 `;

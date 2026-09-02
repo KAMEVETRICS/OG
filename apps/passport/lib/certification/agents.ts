@@ -206,8 +206,20 @@ async function toOwnedAgent(
 ): Promise<OwnedAgent> {
   const agentId = identity.agentId.toString();
   const [resolved, currentSeal] = await Promise.all([
-    resolveAgentPackage(identity, origin),
-    findCurrentSeal(agentId),
+    resolveAgentPackage(identity, origin).catch((error: unknown) => {
+      console.error(
+        `[certification] Package lookup for agent ${agentId} failed:`,
+        error instanceof Error ? error.message : error,
+      );
+      return null;
+    }),
+    findCurrentSeal(agentId).catch((error: unknown) => {
+      console.error(
+        `[certification] Seal lookup for agent ${agentId} failed:`,
+        error instanceof Error ? error.message : error,
+      );
+      return null;
+    }),
   ]);
   return {
     agentId,
@@ -264,7 +276,20 @@ export async function listOwnedAgents(
   if (!isAddress(ownerInput))
     throw new CertificationRequestError('Connect a valid EVM owner wallet.');
   const owner = getAddress(ownerInput);
-  const ids = await chainscanAgentIds(owner);
+  let ids: string[] = [];
+  try {
+    ids = await chainscanAgentIds(owner);
+  } catch (error) {
+    console.error(
+      '[certification] ChainScan discovery failed:',
+      error instanceof Error ? error.message : error,
+    );
+  }
+  if (owner.toLowerCase() === OG_MAINNET.trustedIssuer.toLowerCase()) {
+    for (const id of [ATLAS_0G.agentId.toString(), ROGUE_DEMO.agentId.toString()]) {
+      if (!ids.includes(id)) ids.push(id);
+    }
+  }
   const client = identityClient();
   const verified = await Promise.all(
     ids.map(async (agentId) => {

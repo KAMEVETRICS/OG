@@ -30,6 +30,22 @@ export async function ensureCertificationSchema(): Promise<void> {
     for (const statement of statements) {
       await sqlExec(statement);
     }
+    if ((await sqlKind()) === 'postgres') {
+      for (const statement of [
+        `ALTER TABLE certification_requests
+          ALTER COLUMN challenge_expires_at TYPE BIGINT,
+          ALTER COLUMN seal_expires_at TYPE BIGINT,
+          ALTER COLUMN processing_until TYPE BIGINT,
+          ALTER COLUMN created_at TYPE BIGINT,
+          ALTER COLUMN updated_at TYPE BIGINT`,
+        `ALTER TABLE certifier_locks ALTER COLUMN lease_until TYPE BIGINT`,
+        `ALTER TABLE agent_packages
+          ALTER COLUMN created_at TYPE BIGINT,
+          ALTER COLUMN updated_at TYPE BIGINT`,
+      ]) {
+        await sqlExec(statement);
+      }
+    }
     const seed =
       (await sqlKind()) === 'postgres'
         ? "INSERT INTO certifier_locks(name, holder, lease_until) VALUES ('issuer', NULL, 0) ON CONFLICT (name) DO NOTHING"
@@ -46,7 +62,15 @@ export async function getLatestAgentPackage(
   agentId: string,
   owner: string,
 ): Promise<AgentPackageRow | null> {
-  await ensureCertificationSchema();
+  try {
+    await ensureCertificationSchema();
+  } catch (error) {
+    console.error(
+      '[certification] Package store unavailable:',
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
   return sqlFirst<AgentPackageRow>(
     `
       SELECT * FROM agent_packages

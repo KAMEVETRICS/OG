@@ -90,7 +90,7 @@ function privateKey(): string {
 }
 
 export function certificationModelRevision(): string {
-  return requiredEnv('OG_COMPUTE_MODEL');
+  return process.env.OG_COMPUTE_MODEL?.trim() || 'zai-org/GLM-5-FP8';
 }
 
 export function certificationStorage(): OgStorageEvidenceStore {
@@ -111,7 +111,9 @@ export function certifierLimits() {
 }
 
 export function certifierProvider(): JsonRpcProvider {
-  return new JsonRpcProvider(requiredEnv('OG_RPC_URL'));
+  return new JsonRpcProvider(
+    process.env.OG_RPC_URL?.trim() || OG_MAINNET.rpcUrl,
+  );
 }
 
 export async function getAgentOwner(agentId: string): Promise<string> {

@@ -170,8 +170,8 @@ Network reads use the public 0G mainnet RPC by default. Compute, Storage, regist
 1. Import [https://github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG).
 2. Set **Root Directory** to `apps/passport`. Framework: Next.js. Node.js 22.
 3. Redeploy. Inspect, Atlas/Rogue lookup, and `GET /v1/agents/{id}/passport|gate` work against 0G mainnet with no secrets.
-4. For `/certify`, add `OG_COMPUTE_API_KEY`, `OG_PRIVATE_KEY`, `OG_RPC_URL`, `OG_STORAGE_INDEXER_RPC`, `OG_COMPUTE_MODEL`, `ERC8004_IDENTITY_REGISTRY`, and a database: Vercel **Storage → Neon** (`DATABASE_URL`) or Turso (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`).
-5. Set `SITE_ORIGIN` to the production URL once you have it.
+4. For `/certify`, add `OG_COMPUTE_API_KEY`, `OG_PRIVATE_KEY`, `OG_RPC_URL`, `OG_STORAGE_INDEXER_RPC`, `OG_COMPUTE_MODEL`, and `ERC8004_IDENTITY_REGISTRY`. Attach Vercel **Storage → Neon** (`DATABASE_URL` is injected automatically). Skip Neon’s comments-app quickstart; AgentSeal creates its own tables on first certify request.
+5. Redeploy after adding Storage or env vars. Set `SITE_ORIGIN` to `https://og-agentseal.vercel.app`.
 
 Useful verification commands:
 
