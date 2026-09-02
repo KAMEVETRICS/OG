@@ -27,4 +27,7 @@ Missing identity, missing seal, expiry, revocation, wrong issuer, RPC failure, o
 
 - Chain: 0G Mainnet (Aristotle), ID `16661`
 - Policy: `defi-safe@1.0.0`
-- Docs: [docs.0g.ai](https://docs.0g.ai/)
+- Live API: [https://og-agentseal.vercel.app](https://og-agentseal.vercel.app)
+- Passport UI: [https://og-agentseal.vercel.app/inspect](https://og-agentseal.vercel.app/inspect)
+- Source: [https://github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG)
+- 0G docs: [docs.0g.ai](https://docs.0g.ai/)

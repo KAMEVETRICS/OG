@@ -1,17 +1,17 @@
 # Quickstart
 
-Replace `BASE` with your Passport origin (for example `https://og-agentseal.vercel.app`).
+Live origin: `https://og-agentseal.vercel.app`
 
 ## cURL
 
 ```bash
-curl -sS "$BASE/v1/agents/3522746/passport?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
+curl -sS "https://og-agentseal.vercel.app/v1/agents/3522746/passport?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
 Allow / block only:
 
 ```bash
-curl -sS "$BASE/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
+curl -sS "https://og-agentseal.vercel.app/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
 `versionHash` is accepted as an alias of `implementationHash`.
@@ -19,7 +19,7 @@ curl -sS "$BASE/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc
 ## TypeScript
 
 ```ts
-const base = process.env.AGENTSEAL_API!;
+const base = process.env.AGENTSEAL_API ?? "https://og-agentseal.vercel.app";
 const agentId = "3522746";
 const implementationHash =
   "0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08";

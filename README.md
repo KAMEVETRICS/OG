@@ -136,7 +136,7 @@ curl "$BASE/v1/agents/3522746/gate?implementationHash=0x1d8295513c2bd53441fc0818
 curl "$BASE/v1/agents/3522746/passport?implementationHash=0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08"
 ```
 
-`allowed` / `safeToIntegrate` is the integration switch. Full reference: [docs/gitbook](docs/gitbook/README.md) (GitBook import: `.gitbook.yaml`).
+`allowed` / `safeToIntegrate` is the integration switch. Full reference: [docs/gitbook](docs/gitbook/README.md). Publish that folder to GitBook with Git Sync (repo-root `.gitbook.yaml`).
 
 ## Self-service certification
 
