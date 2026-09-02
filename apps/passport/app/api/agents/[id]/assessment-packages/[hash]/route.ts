@@ -20,13 +20,24 @@ export async function GET(
         404,
         "package_not_found",
       );
-    return new Response(row.package_json, {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "public, max-age=300, s-maxage=3600, immutable",
-        ETag: `"${row.storage_digest}"`,
+    const stored = JSON.parse(row.package_json) as {
+      schemaVersion?: unknown;
+      manifest?: unknown;
+      toolSchema?: unknown;
+    };
+    return Response.json(
+      {
+        schemaVersion: stored.schemaVersion,
+        manifest: stored.manifest,
+        toolSchema: stored.toolSchema,
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "public, max-age=300, s-maxage=3600, immutable",
+          ETag: `"${row.storage_digest}"`,
+        },
+      },
+    );
   } catch (error) {
     return certificationErrorResponse(error);
   }

@@ -1,8 +1,10 @@
 import { parseAgentId } from '@/lib/api/input';
 import {
+  countPendingChallenges,
   deleteExpiredChallenges,
   insertCertification,
 } from '@/lib/certification/database';
+import { certifyOrigin } from '@/lib/site-origin';
 import {
   getVerifiedIdentity,
   resolveAgentPackage,
@@ -35,10 +37,7 @@ export async function POST(request: Request): Promise<Response> {
       MAX_ASSESSMENT_PACKAGE_BYTES + 4_096,
     );
     const agentId = parseAgentId(body.agentId).toString();
-    const configuredOrigin = process.env.SITE_ORIGIN?.trim();
-    const origin = configuredOrigin
-      ? new URL(configuredOrigin).origin
-      : new URL(request.url).origin;
+    const origin = certifyOrigin();
     const identity = await getVerifiedIdentity(agentId);
     const ownerAddress = identity.owner;
     const resolved = await resolveAgentPackage(identity, origin);
@@ -89,6 +88,27 @@ export async function POST(request: Request): Promise<Response> {
 
     const now = Date.now();
     await deleteExpiredChallenges(now);
+    if ((await countPendingChallenges()) >= 40) {
+      throw new CertificationRequestError(
+        'Too many unsigned certification requests. Try again shortly.',
+        429,
+        'challenge_rate_limit',
+      );
+    }
+    if ((await countPendingChallenges({ agentId })) >= 2) {
+      throw new CertificationRequestError(
+        'This agent already has a pending certification challenge.',
+        429,
+        'challenge_rate_limit',
+      );
+    }
+    if ((await countPendingChallenges({ owner: ownerAddress })) >= 3) {
+      throw new CertificationRequestError(
+        'This owner already has pending certification challenges.',
+        429,
+        'challenge_rate_limit',
+      );
+    }
 
     const id = crypto.randomUUID();
     const expiresAt = now + 10 * 60 * 1_000;

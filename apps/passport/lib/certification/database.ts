@@ -4,9 +4,12 @@ import {
   agentPackagesUpdatedIndexSchema,
   certificationRequestsSchema,
   certifierLocksSchema,
+  certifierQuotasSchema,
+  consumeSignedChallengeSchema,
   ownerCreatedIndexSchema,
   statusUpdatedIndexSchema,
 } from '@/db/schema';
+import { CertificationRequestError } from './errors';
 import { sqlExec, sqlFirst } from './sql';
 import type {
   AgentPackageRow,
@@ -69,6 +72,8 @@ export async function ensureCertificationSchema(): Promise<void> {
       agentPackagesSchema,
       agentPackagesUpdatedIndexSchema,
       agentPackagesOwnerIndexSchema,
+      certifierQuotasSchema,
+      consumeSignedChallengeSchema,
       `INSERT INTO certifier_locks(name, holder, lease_until)
        VALUES ('issuer', NULL, 0)
        ON CONFLICT (name) DO NOTHING`,
@@ -148,27 +153,6 @@ export async function getCertification(id: string): Promise<CertificationRow | n
   );
 }
 
-export async function countRecentCertifications(
-  owner: string,
-  since: number,
-): Promise<number> {
-  await ensureCertificationSchema();
-  const row = await sqlFirst<{ count: number | string }>(
-    "SELECT COUNT(*) AS count FROM certification_requests WHERE owner_address = $1 AND created_at >= $2 AND status != 'awaiting_signature'",
-    [owner.toLowerCase(), since],
-  );
-  return Number(row?.count ?? 0);
-}
-
-export async function countGlobalCertifications(since: number): Promise<number> {
-  await ensureCertificationSchema();
-  const row = await sqlFirst<{ count: number | string }>(
-    "SELECT COUNT(*) AS count FROM certification_requests WHERE created_at >= $1 AND status != 'awaiting_signature'",
-    [since],
-  );
-  return Number(row?.count ?? 0);
-}
-
 export async function deleteExpiredChallenges(now: number): Promise<void> {
   await ensureCertificationSchema();
   await sqlExec(
@@ -229,21 +213,86 @@ export async function insertCertification(row: CertificationRow): Promise<void> 
   );
 }
 
-export async function consumeChallenge(
-  id: string,
-  resumeTokenHash: string,
-  now: number,
-): Promise<boolean> {
-  const result = await sqlExec(
-    `
-      UPDATE certification_requests
-      SET status = 'queued', resume_token_hash = $1, updated_at = $2, last_error = NULL
-      WHERE id = $3 AND status = 'awaiting_signature' AND challenge_expires_at > $2
-      RETURNING id
-    `,
-    [resumeTokenHash, now, id],
+export async function countPendingChallenges(filter?: {
+  agentId?: string;
+  owner?: string;
+}): Promise<number> {
+  await ensureCertificationSchema();
+  if (filter?.agentId) {
+    const row = await sqlFirst<{ count: number | string }>(
+      "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature' AND agent_id = $1",
+      [filter.agentId],
+    );
+    return Number(row?.count ?? 0);
+  }
+  if (filter?.owner) {
+    const row = await sqlFirst<{ count: number | string }>(
+      "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature' AND owner_address = $1",
+      [filter.owner.toLowerCase()],
+    );
+    return Number(row?.count ?? 0);
+  }
+  const row = await sqlFirst<{ count: number | string }>(
+    "SELECT COUNT(*) AS count FROM certification_requests WHERE status = 'awaiting_signature'",
   );
-  return result.changes === 1;
+  return Number(row?.count ?? 0);
+}
+
+export async function consumeSignedChallenge(input: {
+  id: string;
+  resumeTokenHash: string;
+  now: number;
+  owner: string;
+  ownerLimit: number;
+  globalLimit: number;
+}): Promise<void> {
+  await ensureCertificationSchema();
+  const day = new Date(input.now).toISOString().slice(0, 10);
+  try {
+    const row = await sqlFirst<{ consume_signed_challenge: string }>(
+      'SELECT consume_signed_challenge($1, $2, $3, $4, $5, $6, $7)',
+      [
+        input.id,
+        input.resumeTokenHash,
+        input.now,
+        day,
+        input.owner.toLowerCase(),
+        input.ownerLimit,
+        input.globalLimit,
+      ],
+    );
+    if (!row?.consume_signed_challenge) {
+      throw new CertificationRequestError(
+        'This ownership challenge was already used.',
+        409,
+        'challenge_consumed',
+      );
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('owner_rate_limit')) {
+      throw new CertificationRequestError(
+        'This owner has reached the daily certification limit.',
+        429,
+        'owner_rate_limit',
+      );
+    }
+    if (message.includes('global_rate_limit')) {
+      throw new CertificationRequestError(
+        'Daily certification capacity is full. Try again tomorrow.',
+        429,
+        'global_rate_limit',
+      );
+    }
+    if (message.includes('challenge_consumed')) {
+      throw new CertificationRequestError(
+        'This ownership challenge was already used.',
+        409,
+        'challenge_consumed',
+      );
+    }
+    throw error;
+  }
 }
 
 export async function claimCertification(

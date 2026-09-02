@@ -17,6 +17,7 @@ import {
   OG_COMPUTE_REQUEST_CONFIG,
   OgComputeRouterClient,
 } from '@agentseal/og-compute';
+import { assertSafePackageUrl } from './package-url.ts';
 import type { AssessmentPackage } from './types.ts';
 
 export const SELF_SERVICE_EVALUATOR_VERSION = 'agentseal-evaluator/0.3.0';
@@ -268,46 +269,13 @@ export function createAssessmentPackageFromPrompt(input: {
   );
 }
 
-function validatePackageUrl(value: string): URL {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error('Assessment package URL is invalid');
-  }
-  const localDevelopment =
-    process.env.NODE_ENV !== 'production' &&
-    (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
-  if (
-    url.protocol !== 'https:' &&
-    !(localDevelopment && url.protocol === 'http:')
-  ) {
-    throw new Error('Assessment package URL must use HTTPS');
-  }
-  if (url.username || url.password || url.hash)
-    throw new Error(
-      'Assessment package URL contains unsupported credentials or fragments',
-    );
-  const host = url.hostname.toLowerCase();
-  const privateHost =
-    host === 'localhost' ||
-    host.endsWith('.local') ||
-    host.startsWith('127.') ||
-    host.startsWith('10.') ||
-    host.startsWith('192.168.') ||
-    /^172\.(1[6-9]|2[0-9]|3[01])\./.test(host) ||
-    host === '::1';
-  if (privateHost && !localDevelopment)
-    throw new Error('Assessment package URL cannot target a private network');
-  return url;
-}
-
 export async function fetchAssessmentPackage(
   packageUrl: string,
   expectedImplementationHash: string,
   expectedModelRevision: string,
+  allowedOrigin: string,
 ): Promise<AssessmentPackage> {
-  const url = validatePackageUrl(packageUrl);
+  const url = assertSafePackageUrl(packageUrl, allowedOrigin);
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },
     redirect: 'manual',
@@ -342,11 +310,12 @@ export async function fetchAssessmentPackage(
 export async function discoverAssessmentPackage(
   packageUrl: string,
   expectedModelRevision: string,
+  allowedOrigin: string,
 ): Promise<{
   assessmentPackage: AssessmentPackage;
   implementationHash: string;
 }> {
-  const url = validatePackageUrl(packageUrl);
+  const url = assertSafePackageUrl(packageUrl, allowedOrigin);
   const response = await fetch(url, {
     headers: { Accept: 'application/json' },
     redirect: 'manual',

@@ -76,3 +76,59 @@ export const agentPackagesOwnerIndexSchema = `
   CREATE INDEX IF NOT EXISTS agent_packages_owner_updated_idx
   ON agent_packages(owner_address, updated_at DESC)
 `;
+
+export const certifierQuotasSchema = `
+  CREATE TABLE IF NOT EXISTS certifier_quotas (
+    day TEXT NOT NULL,
+    key TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, key)
+  )
+`;
+
+export const consumeSignedChallengeSchema = `
+  CREATE OR REPLACE FUNCTION consume_signed_challenge(
+    p_id TEXT,
+    p_hash TEXT,
+    p_now BIGINT,
+    p_day TEXT,
+    p_owner TEXT,
+    p_owner_limit INTEGER,
+    p_global_limit INTEGER
+  ) RETURNS TEXT
+  LANGUAGE plpgsql
+  AS $$
+  DECLARE
+    v_owner INTEGER;
+    v_global INTEGER;
+    v_id TEXT;
+  BEGIN
+    INSERT INTO certifier_quotas(day, key, count) VALUES (p_day, p_owner, 1)
+    ON CONFLICT (day, key) DO UPDATE
+      SET count = certifier_quotas.count + 1
+      WHERE certifier_quotas.count < p_owner_limit
+    RETURNING count INTO v_owner;
+    IF v_owner IS NULL THEN
+      RAISE EXCEPTION 'owner_rate_limit';
+    END IF;
+
+    INSERT INTO certifier_quotas(day, key, count) VALUES (p_day, 'global', 1)
+    ON CONFLICT (day, key) DO UPDATE
+      SET count = certifier_quotas.count + 1
+      WHERE certifier_quotas.count < p_global_limit
+    RETURNING count INTO v_global;
+    IF v_global IS NULL THEN
+      RAISE EXCEPTION 'global_rate_limit';
+    END IF;
+
+    UPDATE certification_requests
+    SET status = 'queued', resume_token_hash = p_hash, updated_at = p_now, last_error = NULL
+    WHERE id = p_id AND status = 'awaiting_signature' AND challenge_expires_at > p_now
+    RETURNING id INTO v_id;
+    IF v_id IS NULL THEN
+      RAISE EXCEPTION 'challenge_consumed';
+    END IF;
+    RETURN v_id;
+  END;
+  $$
+`;

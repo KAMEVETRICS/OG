@@ -1,9 +1,4 @@
-import {
-  countGlobalCertifications,
-  countRecentCertifications,
-  consumeChallenge,
-  getCertification,
-} from '@/lib/certification/database';
+import { consumeSignedChallenge, getCertification } from '@/lib/certification/database';
 import {
   certificationErrorResponse,
   readJsonObject,
@@ -53,38 +48,16 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
     verifyOwnerSignature(row.challenge_message, body.signature, currentOwner);
-    const since = Date.now() - 24 * 60 * 60 * 1_000;
     const limits = certifierLimits();
-    const [ownerCount, globalCount] = await Promise.all([
-      countRecentCertifications(currentOwner, since),
-      countGlobalCertifications(since),
-    ]);
-    if (ownerCount >= limits.owner) {
-      throw new CertificationRequestError(
-        'This owner has reached the daily certification limit.',
-        429,
-        'owner_rate_limit',
-      );
-    }
-    if (globalCount >= limits.global) {
-      throw new CertificationRequestError(
-        'Daily certification capacity is full. Try again tomorrow.',
-        429,
-        'global_rate_limit',
-      );
-    }
     const resumeToken = randomToken();
-    const consumed = await consumeChallenge(
-      row.id,
-      await tokenHash(resumeToken),
-      Date.now(),
-    );
-    if (!consumed)
-      throw new CertificationRequestError(
-        'This ownership challenge was already used.',
-        409,
-        'challenge_consumed',
-      );
+    await consumeSignedChallenge({
+      id: row.id,
+      resumeTokenHash: await tokenHash(resumeToken),
+      now: Date.now(),
+      owner: currentOwner,
+      ownerLimit: limits.owner,
+      globalLimit: limits.global,
+    });
     return Response.json(
       {
         certification: await refreshedPublicState(row.id),

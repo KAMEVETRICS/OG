@@ -13,6 +13,7 @@ import {
 import { fixtureHashesFor } from './demo-fixtures';
 import { certificationModelRevision, certifierProvider } from './env';
 import { CertificationRequestError } from './errors';
+import { isSameOriginUrl } from './package-url.ts';
 import type { AssessmentPackage, CurrentSeal, OwnedAgent } from './types';
 
 const CHAINSCAN_TOKENS_URL = 'https://chainscan.0g.ai/open/nft/tokens';
@@ -119,11 +120,12 @@ export async function resolveAgentPackage(
   }
 
   const endpoint = findRegisteredAssessmentEndpoint(identity.metadata);
-  if (!endpoint) return null;
+  if (!endpoint || !isSameOriginUrl(endpoint, origin)) return null;
   try {
     const discovered = await discoverAssessmentPackage(
       endpoint,
       certificationModelRevision(),
+      origin,
     );
     return { ...discovered, packageUrl: endpoint, source: 'registered' };
   } catch (error) {

@@ -7,7 +7,7 @@ import {
 } from '@/lib/certification/database';
 import { certificationErrorResponse } from '@/lib/certification/http';
 import { advanceCertification } from '@/lib/certification/advance';
-import { tokenHash } from '@/lib/certification/challenge';
+import { tokenHash, tokenHashesEqual } from '@/lib/certification/challenge';
 import { CertificationRequestError } from '@/lib/certification/errors';
 import { refreshedPublicState } from '@/lib/certification/public-state';
 
@@ -27,7 +27,12 @@ export async function POST(
     if (!row) throw new CertificationRequestError('Certification request was not found.', 404, 'not_found');
     const authorization = request.headers.get('authorization') ?? '';
     const resumeToken = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
-    if (!resumeToken || !row.resume_token_hash || await tokenHash(resumeToken) !== row.resume_token_hash) {
+    const expectedHash = row.resume_token_hash;
+    if (
+      !resumeToken ||
+      !expectedHash ||
+      !tokenHashesEqual(await tokenHash(resumeToken), expectedHash)
+    ) {
       throw new CertificationRequestError('Reconnect the owner wallet to continue this assessment.', 401, 'invalid_resume_token');
     }
     if (isTerminalStatus(row.status)) return Response.json({ certification: await refreshedPublicState(id) });

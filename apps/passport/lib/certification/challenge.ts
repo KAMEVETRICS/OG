@@ -1,7 +1,8 @@
+import { timingSafeEqual } from 'node:crypto';
 import { OG_MAINNET } from '@agentseal/sdk';
 import { verifyMessage } from 'ethers';
 
-import { CertificationRequestError } from './errors';
+import { CertificationRequestError } from './errors.ts';
 
 export function createChallengeMessage(input: {
   requestId: string;
@@ -39,6 +40,13 @@ export function randomToken(bytes = 32): string {
 export async function tokenHash(token: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export function tokenHashesEqual(left: string, right: string): boolean {
+  const a = Buffer.from(left, 'utf8');
+  const b = Buffer.from(right, 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
 export function verifyOwnerSignature(
