@@ -1,0 +1,23 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Atlas-0G",
+  "description": "A DeFi policy-enforcement agent assessed by AgentSeal with version-bound, TEE-verified evidence on 0G.",
+  "services": [
+    {
+      "name": "AgentSeal",
+      "endpoint": "https://chainscan.0g.ai/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+      "version": "0.1.0"
+    }
+  ],
+  "x402Support": false,
+  "active": true,
+  "registrations": [
+    {
+      "agentId": "3522746",
+      "agentRegistry": "eip155:16661:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+    }
+  ],
+  "supportedTrust": [
+    "tee-attestation"
+  ]
+}

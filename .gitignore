@@ -1,0 +1,13 @@
+node_modules/
+.pnpm-store/
+.agentseal/
+.env
+.env.*
+!.env.example
+coverage/
+dist/
+artifacts/
+cache/
+.wrangler/
+apps/passport/outputs/
+new shot.png

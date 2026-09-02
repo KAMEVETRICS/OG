@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0",
+  "network": "0g-mainnet",
+  "agentId": "3522746",
+  "implementationHash": "0x1d8295513c2bd53441fc08189a071a9031d6ab76d5f8f77c5f595c69ad0bda08",
+  "policyHash": "0x5635eef2ec2ab753999901846dc52029f59a751d04d818f19acf1dd33c077ddb",
+  "assessmentHash": "0x01bd80fc95efc066953bb97b2e91c5c1b725ae3d3c3b18a64e64fb48d809ac57",
+  "assessmentFile": ".agentseal/live/atlas-01bd80fc95ef.json",
+  "computeRuns": 45,
+  "storage": {
+    "rootHash": "0xfa513857e3511447518a96f5de74358c2e8096f16ac72bff72ce21536597201d",
+    "transactionHash": "0x4041ab30fcf94e3462a23d690f29a7b5d38e7caa89d1941e5733041c3356f67d",
+    "contentDigest": "0x4b2c135025e52e658e5b52acca38d7101a09c2a83a1dc1e18c2cbe6886a3a7d0"
+  },
+  "seal": {
+    "sealId": "1",
+    "registry": "0xEEB2c6bD3249647941aEc2D96dD9067594dbc4a2",
+    "transactionHash": "0x8a4d34b35c3cb7a950492c513eee98b8599bcc69505a0ab34d9c8798ec5fd971",
+    "expiresAt": "1788915780"
+  },
+  "gate": {
+    "address": "0x78f63314330FbEe998dDEBB89A27cD922DAcD11d",
+    "admitted": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@agentseal/sdk",
+  "version": "0.1.0",
+  "description": "Read-only TypeScript SDK for AgentSeal identities, certifications, and gates on 0G.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "ethers": "^6.17.0"
+  }
+}

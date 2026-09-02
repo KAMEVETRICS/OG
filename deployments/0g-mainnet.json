@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "status": "complete",
+  "network": "0g-mainnet",
+  "chainId": "16661",
+  "deployer": "0xaD55ddee566c2ACEa8d3f491248BdAC5e58Ed9c0",
+  "policy": {
+    "id": "defi-safe",
+    "version": "1.0.0",
+    "hash": "0x5635eef2ec2ab753999901846dc52029f59a751d04d818f19acf1dd33c077ddb",
+    "minimumScore": 85
+  },
+  "deployedAt": "2026-09-01T08:51:56.436Z",
+  "contracts": {
+    "AgentSealRegistry": {
+      "address": "0xEEB2c6bD3249647941aEc2D96dD9067594dbc4a2",
+      "transactionHash": "0x9b78db2337753b9fd12e81729ea5d57ee027c368e7795a489eb13db19600c37c",
+      "blockNumber": 43212327
+    },
+    "AgentGate": {
+      "address": "0x78f63314330FbEe998dDEBB89A27cD922DAcD11d",
+      "transactionHash": "0x54ec76d4d9ee2a67235a883a1367036762b425f803f6fa985f65b4346a982815",
+      "blockNumber": 43212843
+    }
+  }
+}

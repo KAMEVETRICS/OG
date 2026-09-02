@@ -1,0 +1,36 @@
+{
+  "name": "agentseal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "assess:demo": "node apps/assessor/src/cli.ts",
+    "contracts:compile": "node scripts/compile-contracts.ts",
+    "contracts:test": "hardhat compile && node --test tests/contracts.test.ts",
+    "deploy:preflight": "hardhat compile && node scripts/deploy-mainnet.ts --preflight",
+    "deploy:mainnet": "hardhat compile && node scripts/deploy-mainnet.ts --yes",
+    "deploy:verify": "node scripts/verify-deployment.ts",
+    "register:rogue": "node scripts/register-rogue-mainnet.ts",
+    "sdk:verify": "node scripts/verify-sdk-mainnet.ts",
+    "certify:atlas": "node scripts/live-certify-atlas.ts",
+    "certify:verify": "node scripts/verify-live-seal.ts",
+    "passport:dev": "pnpm --filter @agentseal/passport dev",
+    "passport:build": "pnpm --filter @agentseal/passport build",
+    "test": "hardhat compile && node --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit --incremental false -p apps/passport/tsconfig.json"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.15",
+    "@types/node": "^26.4.0",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.15.0",
+    "solc": "^0.8.36",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.11"
+  }
+}

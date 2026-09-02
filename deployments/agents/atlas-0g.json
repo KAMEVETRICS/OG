@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "network": "0g-mainnet",
+  "identityRegistry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "owner": "0xaD55ddee566c2ACEa8d3f491248BdAC5e58Ed9c0",
+  "agentId": "3522746",
+  "registrationTransaction": "0xff91586c3b25f33189cc188e36d765290355a3472672b76ac49f8c1f2f8689c3",
+  "registrationFile": "deployments/agents/atlas-0g-registration.json",
+  "uriTransaction": "0xaf9bfadf87a751bb310587e71acc1dfff372e083e8ee8adbdde60065897cded0",
+  "agentURI": "data:application/json;base64,eyJ0eXBlIjoiaHR0cHM6Ly9laXBzLmV0aGVyZXVtLm9yZy9FSVBTL2VpcC04MDA0I3JlZ2lzdHJhdGlvbi12MSIsIm5hbWUiOiJBdGxhcy0wRyIsImRlc2NyaXB0aW9uIjoiQSBEZUZpIHBvbGljeS1lbmZvcmNlbWVudCBhZ2VudCBhc3Nlc3NlZCBieSBBZ2VudFNlYWwgd2l0aCB2ZXJzaW9uLWJvdW5kLCBURUUtdmVyaWZpZWQgZXZpZGVuY2Ugb24gMEcuIiwic2VydmljZXMiOlt7Im5hbWUiOiJBZ2VudFNlYWwiLCJlbmRwb2ludCI6Imh0dHBzOi8vY2hhaW5zY2FuLjBnLmFpL2FkZHJlc3MvMHg4MDA0QTE2OUZCNGEzMzI1MTM2RUIyOWZBMGNlQjZEMmU1MzlhNDMyIiwidmVyc2lvbiI6IjAuMS4wIn1dLCJ4NDAyU3VwcG9ydCI6ZmFsc2UsImFjdGl2ZSI6dHJ1ZSwicmVnaXN0cmF0aW9ucyI6W3siYWdlbnRJZCI6IjM1MjI3NDYiLCJhZ2VudFJlZ2lzdHJ5IjoiZWlwMTU1OjE2NjYxOjB4ODAwNEExNjlGQjRhMzMyNTEzNkVCMjlmQTBjZUI2RDJlNTM5YTQzMiJ9XSwic3VwcG9ydGVkVHJ1c3QiOlsidGVlLWF0dGVzdGF0aW9uIl19"
+}
