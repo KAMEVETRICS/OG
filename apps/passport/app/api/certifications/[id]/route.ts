@@ -1,5 +1,5 @@
 import { certificationErrorResponse } from '@/lib/certification/http';
-import { refreshedPublicState } from '@/lib/certification/server';
+import { refreshedPublicState } from '@/lib/certification/public-state';
 
 export const dynamic = 'force-dynamic';
 

@@ -8,15 +8,11 @@ import {
   certificationErrorResponse,
   readJsonObject,
 } from '@/lib/certification/http';
-import {
-  CertificationRequestError,
-  certifierLimits,
-  getAgentOwner,
-  randomToken,
-  refreshedPublicState,
-  tokenHash,
-  verifyOwnerSignature,
-} from '@/lib/certification/server';
+import { getAgentOwner } from '@/lib/certification/chain';
+import { randomToken, tokenHash, verifyOwnerSignature } from '@/lib/certification/challenge';
+import { certifierLimits } from '@/lib/certification/env';
+import { CertificationRequestError } from '@/lib/certification/errors';
+import { refreshedPublicState } from '@/lib/certification/public-state';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

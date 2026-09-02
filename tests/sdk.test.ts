@@ -60,6 +60,12 @@ test("SDK reads a valid seal and exact-version gate decision", async () => {
   assert.equal(validation.seal?.evidenceRoot, evidenceRoot);
   assert.equal(await client.canExecute(42n, versionHash), true);
   assert.equal(await client.canExecute(42n, changedVersionHash), false);
+
+  const current = await client.currentValidSeal(42n, [changedVersionHash, versionHash]);
+  assert.equal(current?.sealId, 1n);
+  assert.equal(current?.implementationHash, versionHash);
+  assert.equal(current?.gateAdmitted, true);
+  assert.equal(await client.currentValidSeal(42n, [changedVersionHash]), null);
 });
 
 test("SDK parses an ERC-8004 data URI registration card", () => {

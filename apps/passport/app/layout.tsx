@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 
 import { siteOrigin } from '@/lib/site-origin';
-import './globals.css';
+import './theme.css';
+import './passport.css';
 
 const resolvedOrigin = siteOrigin();
 

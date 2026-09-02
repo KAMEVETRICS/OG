@@ -16,12 +16,9 @@ import {
   certificationErrorResponse,
   readJsonObject,
 } from '@/lib/certification/http';
-import {
-  createChallengeMessage,
-  CertificationRequestError,
-  certificationModelRevision,
-  randomToken,
-} from '@/lib/certification/server';
+import { createChallengeMessage, randomToken } from '@/lib/certification/challenge';
+import { certificationModelRevision } from '@/lib/certification/env';
+import { CertificationRequestError } from '@/lib/certification/errors';
 import type {
   AssessmentPackage,
   CertificationRow,

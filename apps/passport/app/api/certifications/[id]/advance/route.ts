@@ -6,12 +6,10 @@ import {
   setCertificationError,
 } from '@/lib/certification/database';
 import { certificationErrorResponse } from '@/lib/certification/http';
-import {
-  CertificationRequestError,
-  advanceCertification,
-  refreshedPublicState,
-  tokenHash,
-} from '@/lib/certification/server';
+import { advanceCertification } from '@/lib/certification/advance';
+import { tokenHash } from '@/lib/certification/challenge';
+import { CertificationRequestError } from '@/lib/certification/errors';
+import { refreshedPublicState } from '@/lib/certification/public-state';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

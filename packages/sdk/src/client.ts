@@ -166,6 +166,49 @@ export class AgentSealClient {
     return (await this.gate.canExecute(BigInt(agentIdInput), implementationHash)) as boolean;
   }
 
+  async currentValidSeal(
+    agentIdInput: bigint | number | string,
+    implementationHashes: string[],
+  ): Promise<{
+    implementationHash: string;
+    sealId: bigint;
+    seal: AgentSeal;
+    gateAdmitted: boolean;
+  } | null> {
+    const unique = [...new Set(implementationHashes.filter((hash) => hash.length > 0))];
+    const agentId = BigInt(agentIdInput);
+    const results = await Promise.all(
+      unique.map(async (implementationHash) => {
+        const [validation, gateAdmitted] = await Promise.all([
+          this.validate({ agentId, implementationHash }),
+          this.canExecute(agentId, implementationHash),
+        ]);
+        if (validation.status !== "valid" || !validation.seal || validation.sealId === null) {
+          return null;
+        }
+        return {
+          implementationHash,
+          sealId: validation.sealId,
+          seal: validation.seal,
+          gateAdmitted,
+        };
+      }),
+    );
+    return results.reduce<
+      | {
+          implementationHash: string;
+          sealId: bigint;
+          seal: AgentSeal;
+          gateAdmitted: boolean;
+        }
+      | null
+    >((best, candidate) => {
+      if (!candidate) return best;
+      if (!best || candidate.sealId > best.sealId) return candidate;
+      return best;
+    }, null);
+  }
+
   async verifyAgent(input: VerifyAgentInput): Promise<AgentPassport> {
     const agentId = BigInt(input.agentId);
     const [identity, validation, gateAdmitted] = await Promise.all([

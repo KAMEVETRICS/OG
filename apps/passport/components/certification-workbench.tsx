@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowRight, LoaderCircle, ShieldCheck, ShieldX } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef } from 'react';
 import type { ChangeEvent, SyntheticEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,46 @@ declare global {
   interface Window {
     ethereum?: EthereumProvider;
   }
+}
+
+type Busy = 'idle' | 'discover' | 'lookup' | 'submit' | 'advance';
+
+type Workbench = {
+  wallet: string | null;
+  agents: OwnedAgent[];
+  selectedId: string | null;
+  lookupOpen: boolean;
+  lookupId: string;
+  recertify: boolean;
+  prompt: string;
+  jsonOpen: boolean;
+  pkg: unknown;
+  pkgName: string | null;
+  certification: CertificationPublicState | null;
+  resumeToken: string | null;
+  error: string | null;
+  busy: Busy;
+};
+
+const emptyWorkbench: Workbench = {
+  wallet: null,
+  agents: [],
+  selectedId: null,
+  lookupOpen: false,
+  lookupId: '',
+  recertify: false,
+  prompt: '',
+  jsonOpen: false,
+  pkg: null,
+  pkgName: null,
+  certification: null,
+  resumeToken: null,
+  error: null,
+  busy: 'idle',
+};
+
+function reduceWorkbench(state: Workbench, patch: Partial<Workbench>): Workbench {
+  return { ...state, ...patch };
 }
 
 interface ChallengeResponse {
@@ -78,69 +118,45 @@ export function CertificationWorkbench({
 }: {
   initialRequestId?: string;
 }) {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [agents, setAgents] = useState<OwnedAgent[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [assessmentPackage, setAssessmentPackage] = useState<unknown>(null);
-  const [packageFileName, setPackageFileName] = useState<string | null>(null);
-  const [systemPrompt, setSystemPrompt] = useState('');
-  const [showJsonUpload, setShowJsonUpload] = useState(false);
-  const [recertifying, setRecertifying] = useState(false);
-  const [manualAgentId, setManualAgentId] = useState('');
-  const [showManualLookup, setShowManualLookup] = useState(false);
-  const [discovering, setDiscovering] = useState(false);
-  const [lookingUpAgent, setLookingUpAgent] = useState(false);
-  const [certification, setCertification] =
-    useState<CertificationPublicState | null>(null);
-  const [resumeToken, setResumeToken] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [ui, patch] = useReducer(reduceWorkbench, emptyWorkbench);
   const driveRef = useRef(false);
-
   const selectedAgent =
-    agents.find((agent) => agent.agentId === selectedAgentId) ?? null;
+    ui.agents.find((agent) => agent.agentId === ui.selectedId) ?? null;
   const composing = Boolean(
-    selectedAgent && (!selectedAgent.currentSeal || recertifying),
+    selectedAgent && (!selectedAgent.currentSeal || ui.recertify),
   );
 
-  const driveAssessment = useCallback(
-    async (id: string, token: string): Promise<void> => {
-      if (driveRef.current) return;
-      driveRef.current = true;
-      setRunning(true);
-      setError(null);
-      try {
-        for (let step = 0; step < 24; step += 1) {
-          const response = await fetch(`/api/certifications/${id}/advance`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const body = await responseJson<{
-            certification: CertificationPublicState;
-            busy?: boolean;
-          }>(response);
-          setCertification(body.certification);
-          if (!ACTIVE_STATUSES.has(body.certification.status)) return;
-          if (body.busy)
-            await new Promise((resolve) => window.setTimeout(resolve, 1_500));
-        }
-        throw new Error(
-          'Assessment paused before completion. Select Resume Assessment to continue.',
-        );
-      } catch (caught) {
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : 'Assessment could not continue.',
-        );
-      } finally {
-        setRunning(false);
-        driveRef.current = false;
+  const driveAssessment = useCallback(async (id: string, token: string): Promise<void> => {
+    if (driveRef.current) return;
+    driveRef.current = true;
+    patch({ busy: 'advance', error: null });
+    try {
+      for (let step = 0; step < 24; step += 1) {
+        const response = await fetch(`/api/certifications/${id}/advance`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await responseJson<{
+          certification: CertificationPublicState;
+          busy?: boolean;
+        }>(response);
+        patch({ certification: body.certification });
+        if (!ACTIVE_STATUSES.has(body.certification.status)) return;
+        if (body.busy) await new Promise((resolve) => window.setTimeout(resolve, 1_500));
       }
-    },
-    [],
-  );
+      throw new Error(
+        'Assessment paused before completion. Select Resume Assessment to continue.',
+      );
+    } catch (caught) {
+      patch({
+        error:
+          caught instanceof Error ? caught.message : 'Assessment could not continue.',
+      });
+    } finally {
+      driveRef.current = false;
+      patch({ busy: 'idle' });
+    }
+  }, []);
 
   useEffect(() => {
     if (!initialRequestId) return;
@@ -154,23 +170,24 @@ export function CertificationWorkbench({
           response,
         );
         if (cancelled) return;
-        setCertification(body.certification);
         const savedToken = window.sessionStorage.getItem(
           `agentseal:${initialRequestId}`,
         );
-        if (savedToken) {
-          setResumeToken(savedToken);
-          if (ACTIVE_STATUSES.has(body.certification.status)) {
-            void driveAssessment(initialRequestId, savedToken);
-          }
+        patch({
+          certification: body.certification,
+          resumeToken: savedToken,
+        });
+        if (savedToken && ACTIVE_STATUSES.has(body.certification.status)) {
+          void driveAssessment(initialRequestId, savedToken);
         }
       } catch (caught) {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : 'Certification request could not be loaded.',
-          );
+          patch({
+            error:
+              caught instanceof Error
+                ? caught.message
+                : 'Certification request could not be loaded.',
+          });
         }
       }
     })();
@@ -179,27 +196,22 @@ export function CertificationWorkbench({
     };
   }, [driveAssessment, initialRequestId]);
 
-  async function discoverOwnedAgents(owner: string): Promise<void> {
-    setDiscovering(true);
+  async function discoverOwnedAgents(owner: string): Promise<OwnedAgent[]> {
+    patch({ busy: 'discover' });
     try {
       const body = await responseJson<{ agents: OwnedAgent[] }>(
         await fetch(`/api/agents?owner=${encodeURIComponent(owner)}`, {
           cache: 'no-store',
         }),
       );
-      setAgents(body.agents);
-      setSelectedAgentId((current) =>
-        body.agents.some((agent) => agent.agentId === current)
-          ? current
-          : (body.agents[0]?.agentId ?? null),
-      );
+      return body.agents;
     } finally {
-      setDiscovering(false);
+      patch({ busy: 'idle' });
     }
   }
 
   async function connectWallet(): Promise<void> {
-    setError(null);
+    patch({ error: null });
     try {
       if (!window.ethereum)
         throw new Error('Install or open an EVM wallet to continue.');
@@ -209,66 +221,79 @@ export function CertificationWorkbench({
       })) as string[];
       const connected = accounts[0];
       if (!connected) throw new Error('Your wallet did not return an account.');
-      setWalletAddress(connected);
-      setAssessmentPackage(null);
-      setPackageFileName(null);
-      setSystemPrompt('');
-      setRecertifying(false);
-      setShowJsonUpload(false);
-      await discoverOwnedAgents(connected);
+      const agents = await discoverOwnedAgents(connected);
+      patch({
+        wallet: connected,
+        agents,
+        selectedId: agents[0]?.agentId ?? null,
+        recertify: false,
+        prompt: '',
+        jsonOpen: false,
+        pkg: null,
+        pkgName: null,
+      });
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'The wallet could not be connected.',
-      );
+      patch({
+        error:
+          caught instanceof Error
+            ? caught.message
+            : 'The wallet could not be connected.',
+      });
     }
   }
 
   function selectAgent(agentId: string): void {
-    setSelectedAgentId(agentId);
-    setAssessmentPackage(null);
-    setPackageFileName(null);
-    setSystemPrompt('');
-    setRecertifying(false);
-    setShowJsonUpload(false);
-    setError(null);
+    patch({
+      selectedId: agentId,
+      pkg: null,
+      pkgName: null,
+      prompt: '',
+      recertify: false,
+      jsonOpen: false,
+      error: null,
+    });
   }
 
   async function lookupOwnedAgent(): Promise<void> {
-    if (!walletAddress) return;
-    setLookingUpAgent(true);
-    setError(null);
+    if (!ui.wallet) return;
+    patch({ busy: 'lookup', error: null });
     try {
       const body = await responseJson<{ agent: OwnedAgent }>(
         await fetch(
-          `/api/agents/${encodeURIComponent(manualAgentId.trim())}?owner=${encodeURIComponent(walletAddress)}`,
+          `/api/agents/${encodeURIComponent(ui.lookupId.trim())}?owner=${encodeURIComponent(ui.wallet)}`,
           { cache: 'no-store' },
         ),
       );
-      setAgents((current) => [
-        body.agent,
-        ...current.filter((agent) => agent.agentId !== body.agent.agentId),
-      ]);
-      selectAgent(body.agent.agentId);
-      setShowManualLookup(false);
-      setManualAgentId('');
+      patch({
+        agents: [
+          body.agent,
+          ...ui.agents.filter((agent) => agent.agentId !== body.agent.agentId),
+        ],
+        selectedId: body.agent.agentId,
+        pkg: null,
+        pkgName: null,
+        prompt: '',
+        recertify: false,
+        jsonOpen: false,
+        lookupOpen: false,
+        lookupId: '',
+        error: null,
+        busy: 'idle',
+      });
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'The agent could not be verified.',
-      );
-    } finally {
-      setLookingUpAgent(false);
+      patch({
+        busy: 'idle',
+        error:
+          caught instanceof Error
+            ? caught.message
+            : 'The agent could not be verified.',
+      });
     }
   }
 
   async function readPackageFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
-    setAssessmentPackage(null);
-    setPackageFileName(null);
-    setError(null);
+    patch({ pkg: null, pkgName: null, error: null });
     if (!file) return;
     try {
       if (file.size > MAX_PACKAGE_BYTES)
@@ -277,15 +302,15 @@ export function CertificationWorkbench({
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         throw new Error('Assessment package must be a JSON object.');
       }
-      setAssessmentPackage(parsed);
-      setPackageFileName(file.name);
+      patch({ pkg: parsed, pkgName: file.name });
     } catch (caught) {
       event.target.value = '';
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Assessment package could not be read.',
-      );
+      patch({
+        error:
+          caught instanceof Error
+            ? caught.message
+            : 'Assessment package could not be read.',
+      });
     }
   }
 
@@ -293,10 +318,9 @@ export function CertificationWorkbench({
     event: SyntheticEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    setSubmitting(true);
-    setError(null);
+    patch({ busy: 'submit', error: null });
     try {
-      if (!window.ethereum || !walletAddress)
+      if (!window.ethereum || !ui.wallet)
         throw new Error('Connect the ERC-8004 owner wallet first.');
       if (!selectedAgent) throw new Error('Select an ERC-8004 agent to assess.');
       if (!selectedAgent.active) {
@@ -304,8 +328,8 @@ export function CertificationWorkbench({
           'Activate this ERC-8004 agent before requesting certification.',
         );
       }
-      const prompt = systemPrompt.trim();
-      if (!selectedAgent.packageReady && !assessmentPackage && prompt.length === 0) {
+      const prompt = ui.prompt.trim();
+      if (!selectedAgent.packageReady && !ui.pkg && prompt.length === 0) {
         throw new Error(
           'Paste this agent’s system prompt, or upload its assessment package.',
         );
@@ -317,11 +341,11 @@ export function CertificationWorkbench({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agentId: selectedAgent.agentId,
-            ...(selectedAgent.packageReady && !prompt && !assessmentPackage
+            ...(selectedAgent.packageReady && !prompt && !ui.pkg
               ? {}
               : prompt
                 ? { systemPrompt: prompt }
-                : { assessmentPackage }),
+                : { assessmentPackage: ui.pkg }),
           }),
         }),
       );
@@ -354,17 +378,20 @@ export function CertificationWorkbench({
         '',
         `/certify?request=${created.certification.id}`,
       );
-      setCertification(created.certification);
-      setResumeToken(created.resumeToken);
+      patch({
+        certification: created.certification,
+        resumeToken: created.resumeToken,
+        busy: 'idle',
+      });
       await driveAssessment(created.certification.id, created.resumeToken);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Certification request could not be created.',
-      );
-    } finally {
-      setSubmitting(false);
+      patch({
+        busy: 'idle',
+        error:
+          caught instanceof Error
+            ? caught.message
+            : 'Certification request could not be created.',
+      });
     }
   }
 
@@ -378,41 +405,41 @@ export function CertificationWorkbench({
           </div>
         </div>
 
-        {!walletAddress ? (
+        {!ui.wallet ? (
           <WalletConnectCard onConnect={() => void connectWallet()} />
         ) : (
           <form onSubmit={(event) => void submitCertification(event)}>
             <ConnectedWalletBar
-              address={walletAddress}
+              address={ui.wallet}
               onChange={() => void connectWallet()}
             />
             <AgentPicker
-              agents={agents}
-              selectedAgentId={selectedAgentId}
-              discovering={discovering}
-              lookingUpAgent={lookingUpAgent}
-              showManualLookup={showManualLookup}
-              manualAgentId={manualAgentId}
+              agents={ui.agents}
+              selectedAgentId={ui.selectedId}
+              discovering={ui.busy === 'discover'}
+              lookingUpAgent={ui.busy === 'lookup'}
+              showManualLookup={ui.lookupOpen}
+              manualAgentId={ui.lookupId}
               onSelect={selectAgent}
-              onToggleManual={() => setShowManualLookup(true)}
-              onManualIdChange={setManualAgentId}
+              onToggleManual={() => patch({ lookupOpen: true })}
+              onManualIdChange={(lookupId) => patch({ lookupId })}
               onLookup={() => void lookupOwnedAgent()}
             />
-            {selectedAgent?.currentSeal && !recertifying && (
+            {selectedAgent?.currentSeal && !ui.recertify && (
               <SealedAgentCard
                 agent={selectedAgent}
-                onRecertify={() => setRecertifying(true)}
+                onRecertify={() => patch({ recertify: true })}
               />
             )}
             {selectedAgent && (
               <ComposeForm
                 agent={selectedAgent}
-                recertifying={recertifying}
-                systemPrompt={systemPrompt}
-                showJsonUpload={showJsonUpload}
-                packageFileName={packageFileName}
-                onPromptChange={setSystemPrompt}
-                onShowJsonUpload={() => setShowJsonUpload(true)}
+                recertifying={ui.recertify}
+                systemPrompt={ui.prompt}
+                showJsonUpload={ui.jsonOpen}
+                packageFileName={ui.pkgName}
+                onPromptChange={(prompt) => patch({ prompt })}
+                onShowJsonUpload={() => patch({ jsonOpen: true })}
                 onPackageFile={(event) => void readPackageFile(event)}
               />
             )}
@@ -426,45 +453,46 @@ export function CertificationWorkbench({
                   className="certification-submit"
                   type="submit"
                   disabled={
-                    submitting ||
-                    running ||
+                    ui.busy !== 'idle' ||
                     !selectedAgent ||
                     !selectedAgent.active ||
                     (!selectedAgent.packageReady &&
-                      !assessmentPackage &&
-                      systemPrompt.trim().length === 0)
+                      !ui.pkg &&
+                      ui.prompt.trim().length === 0)
                   }
                 >
-                  {submitting ? (
+                  {ui.busy === 'submit' ? (
                     <LoaderCircle className="spin" aria-hidden="true" />
                   ) : (
                     <ShieldCheck aria-hidden="true" />
                   )}
                   <span>
-                    {submitting ? 'Authorizing Request…' : 'Sign & Start Assessment'}
+                    {ui.busy === 'submit'
+                      ? 'Authorizing Request…'
+                      : 'Sign & Start Assessment'}
                   </span>
-                  {!submitting && <ArrowRight aria-hidden="true" />}
+                  {ui.busy !== 'submit' && <ArrowRight aria-hidden="true" />}
                 </Button>
               </>
             )}
           </form>
         )}
 
-        {error && (
+        {ui.error && (
           <div className="certification-error" role="alert">
             <ShieldX aria-hidden="true" />
-            <span>{error}</span>
+            <span>{ui.error}</span>
           </div>
         )}
       </section>
 
       <IssuancePipeline
-        certification={certification}
-        running={running}
-        resumeToken={resumeToken}
+        certification={ui.certification}
+        running={ui.busy === 'advance'}
+        resumeToken={ui.resumeToken}
         onResume={() => {
-          if (certification && resumeToken) {
-            void driveAssessment(certification.id, resumeToken);
+          if (ui.certification && ui.resumeToken) {
+            void driveAssessment(ui.certification.id, ui.resumeToken);
           }
         }}
       />

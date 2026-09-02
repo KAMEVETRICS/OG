@@ -1,10 +1,5 @@
-import {
-  AGENT_SEAL_REGISTRY_ABI,
-  AgentSealClient,
-  OG_MAINNET,
-  type AgentIdentity,
-} from '@agentseal/sdk';
-import { Contract, getAddress, isAddress } from 'ethers';
+import { AgentSealClient, OG_MAINNET, type AgentIdentity } from '@agentseal/sdk';
+import { getAddress, isAddress } from 'ethers';
 
 import {
   discoverAssessmentPackage,
@@ -21,72 +16,24 @@ import { CertificationRequestError } from './errors';
 import type { AssessmentPackage, CurrentSeal, OwnedAgent } from './types';
 
 const CHAINSCAN_TOKENS_URL = 'https://chainscan.0g.ai/open/nft/tokens';
-const REGISTRY_START_BLOCK = 43_212_327;
-const SEAL_QUERY_ABI = [
-  ...AGENT_SEAL_REGISTRY_ABI,
-  'event SealIssued(uint256 indexed sealId, uint256 indexed agentId, bytes32 indexed policyHash, bytes32 versionHash, bytes32 evidenceRoot, uint16 safetyScore, uint64 expiresAt, address issuer)',
-] as const;
 
-export async function findCurrentSeal(agentId: string): Promise<CurrentSeal | null> {
-  const provider = certifierProvider();
-  const client = new AgentSealClient({
-    provider,
-    identityRegistry:
-      process.env.ERC8004_IDENTITY_REGISTRY?.trim() ||
-      OG_MAINNET.identityRegistry,
-  });
-  const hashes = new Set(fixtureHashesFor(agentId));
-  try {
-    const registry = new Contract(
-      OG_MAINNET.agentSealRegistry,
-      SEAL_QUERY_ABI,
-      provider,
-    );
-    const filter = registry.filters.SealIssued(
-      null,
-      BigInt(agentId),
-      OG_MAINNET.policy.hash,
-    );
-    const logs = await registry.queryFilter(filter, REGISTRY_START_BLOCK);
-    for (const log of logs) {
-      const versionHash = (log as { args?: { versionHash?: string } }).args
-        ?.versionHash;
-      if (typeof versionHash === 'string') hashes.add(versionHash);
-    }
-  } catch (error) {
-    console.error(
-      `[certification] Seal lookup for agent ${agentId} fell back to known hashes:`,
-      error instanceof Error ? error.message : error,
-    );
-  }
-
-  let current: CurrentSeal | null = null;
-  for (const implementationHash of hashes) {
-    try {
-      const validation = await client.validate({
-        agentId,
-        implementationHash,
-      });
-      if (validation.status !== 'valid' || !validation.seal) continue;
-      const gateAdmitted = await client.canExecute(agentId, implementationHash);
-      const candidate: CurrentSeal = {
-        sealId: validation.seal.sealId.toString(),
-        implementationHash,
-        expiresAt: validation.seal.expiresAt.toISOString(),
-        safetyScore: validation.seal.safetyScore,
-        gateAdmitted,
-      };
-      if (!current || BigInt(candidate.sealId) > BigInt(current.sealId)) {
-        current = candidate;
-      }
-    } catch (error) {
-      console.error(
-        `[certification] Seal ${implementationHash} for agent ${agentId} could not be read:`,
-        error instanceof Error ? error.message : error,
-      );
-    }
-  }
-  return current;
+export async function findCurrentSeal(
+  agentId: string,
+  implementationHash?: string | null,
+): Promise<CurrentSeal | null> {
+  const hashes = [
+    ...(implementationHash ? [implementationHash] : []),
+    ...fixtureHashesFor(agentId),
+  ];
+  const found = await identityClient().currentValidSeal(agentId, hashes);
+  if (!found) return null;
+  return {
+    sealId: found.sealId.toString(),
+    implementationHash: found.implementationHash,
+    expiresAt: found.seal.expiresAt.toISOString(),
+    safetyScore: found.seal.safetyScore,
+    gateAdmitted: found.gateAdmitted,
+  };
 }
 
 export interface ResolvedAgentPackage {
@@ -193,10 +140,8 @@ async function toOwnedAgent(
   origin: string,
 ): Promise<OwnedAgent> {
   const agentId = identity.agentId.toString();
-  const [resolved, currentSeal] = await Promise.all([
-    resolveAgentPackage(identity, origin),
-    findCurrentSeal(agentId),
-  ]);
+  const resolved = await resolveAgentPackage(identity, origin);
+  const currentSeal = await findCurrentSeal(agentId, resolved?.implementationHash);
   return {
     agentId,
     name:
