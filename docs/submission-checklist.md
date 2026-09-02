@@ -21,7 +21,7 @@
 
 ## Requires owner action or explicit approval
 
-- [ ] Publish the repository to a public GitHub URL
+- [x] Publish the repository to a public GitHub URL
 - [ ] Record and upload the demo video
 - [ ] Publish the X announcement and insert its URL in the submission
 - [ ] Re-certify Atlas shortly before judging so the displayed seal is current

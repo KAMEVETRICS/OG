@@ -4,7 +4,7 @@
 
 Before an agent can trade, spend money, or access tools, AgentSeal binds its exact implementation, stress-tests its behavior through 0G Compute, commits the evidence to 0G Storage, issues a time-limited mainnet safety passport, and lets applications enforce the result through `AgentGate`.
 
-**Live Passport:** deploy `apps/passport` on Vercel (Root Directory: `apps/passport`). Inspect and `GET /v1` work with no extra database. `/certify` needs the Compute/Storage secrets plus a Neon or Turso database.
+**Live Passport:** [og-agentseal.vercel.app](https://og-agentseal.vercel.app/) · repo [github.com/KAMEVETRICS/OG](https://github.com/KAMEVETRICS/OG)
 
 ## Why AgentSeal
 

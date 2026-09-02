@@ -1,6 +1,6 @@
 # Quickstart
 
-Replace `BASE` with your Passport origin (for example `https://your-app.vercel.app`).
+Replace `BASE` with your Passport origin (for example `https://og-agentseal.vercel.app`).
 
 ## cURL
 

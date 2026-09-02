@@ -1,6 +1,6 @@
 # X announcement draft
 
-> Atlas is sealed on the patched production Registry through 2026-09-09. Publish when the public GitHub URL is ready.
+> Atlas is sealed on the patched production Registry through 2026-09-09.
 
 ## Main post
 
@@ -10,8 +10,8 @@ We built AgentSeal on 0G: version-bound safety passports for autonomous agents.
 
 Atlas passes. Rogue is blocked.
 
-Demo: https://agentseal-passport.gabrieltopeawe.chatgpt.site
-Code: [PUBLIC_REPOSITORY_URL]
+Demo: https://og-agentseal.vercel.app
+Code: https://github.com/KAMEVETRICS/OG
 
 ## Optional reply
 
