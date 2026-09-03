@@ -1,5 +1,7 @@
 # Gate
 
+Part of the [public API](api-overview.md).
+
 ```http
 GET /v1/agents/{agentId}/gate?implementationHash=0x…
 ```

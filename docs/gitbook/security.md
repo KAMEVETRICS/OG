@@ -1,6 +1,6 @@
 # Security
 
-The public API is designed so untrusted clients can query it.
+The [public API](api-overview.md) is designed so untrusted clients can query it. Write-path rules below apply to [Certify](certify.md), which is not this API.
 
 ## Input rules
 

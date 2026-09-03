@@ -1,6 +1,6 @@
 # Authentication
 
-The **read API does not use API keys**. Passport and gate lookups are public, the same way `AgentGate.canExecute` is public on chain.
+The **read API does not use API keys**. [Passport](passport.md) and [gate](gate.md) lookups are public, the same way `AgentGate.canExecute` is public on chain. See [API overview](api-overview.md).
 
 - Do not send `OG_PRIVATE_KEY`, Compute keys, or wallet signatures to these routes
 - CORS allows browser `GET` from any origin

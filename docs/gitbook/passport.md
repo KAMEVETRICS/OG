@@ -1,5 +1,7 @@
 # Passport
 
+Part of the [public API](api-overview.md). Same decision as [Inspect](inspect.md).
+
 ```http
 GET /v1/agents/{agentId}/passport?implementationHash=0x…
 ```

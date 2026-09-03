@@ -1,5 +1,7 @@
 # TypeScript SDK
 
+Part of the [public API](api-overview.md) family: same fail-closed rule, no HTTP hop.
+
 `@agentseal/sdk` talks to 0G RPC directly. Use it in Node backends when you do not want an extra HTTP hop.
 
 ```ts

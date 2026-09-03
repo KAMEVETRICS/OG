@@ -2,6 +2,8 @@
 
 Live origin: `https://og-agentseal.vercel.app`
 
+This page is the shortest path into the **read API**. For the product, start at [Overview](README.md). For every endpoint in one table, see [API overview](api-overview.md).
+
 ## cURL
 
 ```bash

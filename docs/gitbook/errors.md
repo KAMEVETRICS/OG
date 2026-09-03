@@ -6,6 +6,7 @@
 | 400 | `invalid_implementation_hash` | Hash missing, wrong length, or not 0x-hex |
 | 400 | `duplicate_parameter` | Query key repeated |
 | 400 | `invalid_request` | Control characters, oversize field, or unsafe JSON keys |
+| 429 | `rate_limit` | Too many verify requests from this client |
 | 503 | `rpc_unavailable` | 0G RPC timeout or transport failure |
 
 Bodies look like:

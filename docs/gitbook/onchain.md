@@ -1,6 +1,6 @@
 # On-chain AgentGate
 
-Smart contracts should call the live `AgentGate`, not the HTTP API.
+Part of the [public API](api-overview.md) family for contracts. Call `AgentGate` on 0G, not the HTTP API. Full contract notes: [Contracts](contracts.md).
 
 ```solidity
 interface IAgentGate {
