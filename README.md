@@ -190,7 +190,7 @@ apps/passport/               live Agent Passport dashboard
 benchmarks/defi-safe/v1/     frozen adversarial policy suite
 contracts/src/               AgentSealRegistry and AgentGate
 deployments/                 mainnet manifests, identities, and seals
-docs/                        architecture, trust model, demo, and submission guide
+docs/                        architecture, trust model, and API docs
 packages/core/               canonical hashing, fingerprints, and shared types
 packages/og-compute/         fail-closed 0G Compute Router adapter
 packages/og-storage/         evidence preparation, upload, and verification
@@ -208,15 +208,13 @@ tests/                       assessment, contract, adapter, and SDK tests
 - The MVP does not implement subjective slashing, warranties, a challenge market, or a universal score.
 - Atlas must be reassessed and issued a fresh seal after expiry.
 
-## Submission resources
+## Documentation
 
 - [MVP specification](docs/mvp-spec.md)
 - [Architecture and trust boundaries](docs/architecture.md)
 - [Self-service certification package](docs/certification-package.md)
 - [0G integration decisions](docs/0g-integrations.md)
-- [2½-minute demo script](docs/demo-script.md)
-- [Submission checklist](docs/submission-checklist.md)
-- [X announcement draft](docs/x-announcement.md)
+- [Public API docs](https://agentseal.gitbook.io/agentseal-docs/)
 - [Public API docs](https://agentseal.gitbook.io/agentseal-docs/)
 
 ## License

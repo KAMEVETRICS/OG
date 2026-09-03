@@ -8,6 +8,13 @@ export const ACTIVE_STATUSES = new Set([
   'issuing',
 ]);
 export const OG_CHAIN_ID = '0x4115';
+export const OG_CHAIN = {
+  chainId: OG_CHAIN_ID,
+  chainName: '0G Mainnet',
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
+  rpcUrls: ['https://evmrpc.0g.ai'],
+  blockExplorerUrls: ['https://chainscan.0g.ai'],
+} as const;
 export const MAX_PACKAGE_BYTES = 65_536;
 
 export function short(value: string | null, left = 10, right = 8): string {
@@ -43,10 +50,13 @@ export function stepState(
 }
 
 export function walletErrorCode(error: unknown): number | null {
-  return typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof error.code === 'number'
-    ? error.code
-    : null;
+  if (typeof error !== 'object' || error === null) return null;
+  const record = error as {
+    code?: unknown;
+    data?: { originalError?: { code?: unknown } };
+  };
+  if (typeof record.data?.originalError?.code === 'number') {
+    return record.data.originalError.code;
+  }
+  return typeof record.code === 'number' ? record.code : null;
 }

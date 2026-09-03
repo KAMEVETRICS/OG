@@ -16,6 +16,7 @@ import { SealedAgentCard } from './certify/sealed-card';
 import {
   ACTIVE_STATUSES,
   MAX_PACKAGE_BYTES,
+  OG_CHAIN,
   OG_CHAIN_ID,
   responseJson,
   short,
@@ -24,6 +25,7 @@ import {
 import { ConnectedWalletBar, WalletConnectCard } from './certify/wallet-panel';
 
 interface EthereumProvider {
+  isMetaMask?: boolean;
   request(input: { method: string; params?: unknown[] }): Promise<unknown>;
 }
 
@@ -31,6 +33,27 @@ declare global {
   interface Window {
     ethereum?: EthereumProvider;
   }
+}
+
+interface Eip6963ProviderDetail {
+  info?: { rdns?: string };
+  provider?: EthereumProvider;
+}
+
+function injectedProvider(): EthereumProvider | undefined {
+  const announced: EthereumProvider[] = [];
+  const onAnnounce = (event: Event) => {
+    const detail = (event as CustomEvent<Eip6963ProviderDetail>).detail;
+    if (detail?.provider) announced.push(detail.provider);
+  };
+  window.addEventListener('eip6963:announceProvider', onAnnounce);
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+  window.removeEventListener('eip6963:announceProvider', onAnnounce);
+  return (
+    announced.find((provider) => provider.isMetaMask) ??
+    announced[0] ??
+    window.ethereum
+  );
 }
 
 type Busy = 'idle' | 'discover' | 'lookup' | 'submit' | 'advance';
@@ -101,15 +124,7 @@ async function ensureOgMainnet(provider: EthereumProvider): Promise<void> {
     if (walletErrorCode(error) !== 4902) throw error;
     await provider.request({
       method: 'wallet_addEthereumChain',
-      params: [
-        {
-          chainId: OG_CHAIN_ID,
-          chainName: '0G Mainnet',
-          nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
-          rpcUrls: ['https://evmrpc.0g.ai'],
-          blockExplorerUrls: ['https://chainscan.0g.ai'],
-        },
-      ],
+      params: [OG_CHAIN],
     });
   }
 }
@@ -214,14 +229,14 @@ export function CertificationWorkbench({
   async function connectWallet(): Promise<void> {
     patch({ error: null });
     try {
-      if (!window.ethereum)
-        throw new Error('Install or open an EVM wallet to continue.');
-      await ensureOgMainnet(window.ethereum);
-      const accounts = (await window.ethereum.request({
+      const provider = injectedProvider();
+      if (!provider) throw new Error('Install or open an EVM wallet to continue.');
+      const accounts = (await provider.request({
         method: 'eth_requestAccounts',
       })) as string[];
       const connected = accounts[0];
       if (!connected) throw new Error('Your wallet did not return an account.');
+      await ensureOgMainnet(provider);
       const agents = await discoverOwnedAgents(connected);
       patch({
         wallet: connected,
@@ -234,11 +249,14 @@ export function CertificationWorkbench({
         pkgName: null,
       });
     } catch (caught) {
+      const code = walletErrorCode(caught);
       patch({
         error:
-          caught instanceof Error
-            ? caught.message
-            : 'The wallet could not be connected.',
+          code === 4001
+            ? 'Wallet connection was rejected.'
+            : caught instanceof Error
+              ? caught.message
+              : 'The wallet could not be connected.',
       });
     }
   }
@@ -321,7 +339,8 @@ export function CertificationWorkbench({
     event.preventDefault();
     patch({ busy: 'submit', error: null });
     try {
-      if (!window.ethereum || !ui.wallet)
+      const provider = injectedProvider();
+      if (!provider || !ui.wallet)
         throw new Error('Connect the ERC-8004 owner wallet first.');
       if (!selectedAgent) throw new Error('Select an ERC-8004 agent to assess.');
       if (!selectedAgent.active) {
@@ -335,7 +354,7 @@ export function CertificationWorkbench({
           'Paste this agent’s system prompt, or upload its assessment package.',
         );
       }
-      await ensureOgMainnet(window.ethereum);
+      await ensureOgMainnet(provider);
       const packageFields =
         selectedAgent.packageReady && !prompt && !ui.pkg
           ? {}
@@ -352,7 +371,7 @@ export function CertificationWorkbench({
           }),
         }),
       );
-      const accounts = (await window.ethereum.request({
+      const accounts = (await provider.request({
         method: 'eth_requestAccounts',
       })) as string[];
       const connected = accounts[0];
@@ -361,7 +380,7 @@ export function CertificationWorkbench({
           `Connect the ERC-8004 owner wallet ${short(challenge.ownerAddress)}.`,
         );
       }
-      const signature = (await window.ethereum.request({
+      const signature = (await provider.request({
         method: 'personal_sign',
         params: [challenge.challengeMessage, connected],
       })) as string;

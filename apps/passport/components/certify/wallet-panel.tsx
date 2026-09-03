@@ -13,7 +13,11 @@ export function WalletConnectCard({ onConnect }: { onConnect: () => void }) {
       </span>
       <div>
         <strong>Connect the owner wallet</strong>
-        <p>We use it to find and verify your ERC-8004 agents on 0G Mainnet.</p>
+        <p>
+          Connection is view-only. AgentSeal looks up your ERC-8004 agents and
+          cannot move funds. Switch to 0G Mainnet after you approve the
+          connection.
+        </p>
       </div>
       <Button type="button" onClick={onConnect}>
         Connect Wallet <ArrowRight aria-hidden="true" />
